@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0e0e0d;
+  --bg2: #1a1917;
+  --bg3: #222019;
+  --bg4: #2d2b27;
+  --accent: #c8a96e;
+  --accent-light: rgba(200, 169, 110, 0.12);
+  --danger: #C0392B;
+  --danger-light: rgba(192, 57, 43, 0.12);
+  /* Legacy alias — kept so existing var(--red) and var(--red-light) refs resolve to accent */
+  --red: #c8a96e;
+  --red-light: rgba(200, 169, 110, 0.12);
+  --text: #f0ece4;
+  --text-2: #9a9589;
+  --text-3: #5a5650;
+  --border: #2a2825;
+  --border-med: #3a3834;
+  --amber: #D4821A;
+  --green: #4A7C3F;
+  --blue: #87AECC;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+textarea {
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+}
+
+::selection {
+  background: rgba(200, 169, 110, 0.25);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 3px;
+}
+

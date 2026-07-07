@@ -7,7 +7,6 @@ import { Project, Resource, GearInventoryItem, ProjectType, GearCategory } from 
 import { getProjects, loadFromCloud, deleteProject, duplicateProject, calcChecklistProgress } from '@/lib/storage'
 import { getResources, loadResourcesFromCloud, saveResource, deleteResource } from '@/lib/resources'
 import { getGearInventory, loadGearFromCloud, saveGearInventory } from '@/lib/gearInventory'
-import { parseFile } from '@/lib/attachments'
 import Header from '@/components/layout/Header'
 import { ProgressBar } from '@/components/ui'
 
@@ -81,9 +80,26 @@ export default function Dashboard() {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const att = await parseFile(file)
-      if (!att.content) return
-      setPendingResource({ content: att.content, name: file.name.replace(/\.[^.]+$/, '') })
+      let content: string
+      if (file.type === 'application/pdf') {
+        // Server-side parsing avoids pdfjs worker bundling issues in Next.js
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'PDF parsing failed')
+        content = json.text as string
+      } else {
+        // Plain text / markdown — read directly in the browser
+        content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsText(file)
+        })
+      }
+      if (!content?.trim()) { alert('No text could be extracted from this file.'); return }
+      setPendingResource({ content, name: file.name.replace(/\.[^.]+$/, '') })
       setResourceName(file.name.replace(/\.[^.]+$/, ''))
       setUploadingResource(true)
     } catch (err) {

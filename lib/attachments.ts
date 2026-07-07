@@ -83,11 +83,8 @@ async function extractPdfText(file: File): Promise<string> {
   // Lazy-import pdfjs-dist to keep it out of the main bundle
   const pdfjsLib = await import('pdfjs-dist')
 
-  // Use the legacy build worker bundled with pdfjs-dist
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url
-  ).toString()
+  // Serve the worker from public/ — import.meta.url doesn't resolve correctly in Next.js/Turbopack
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []

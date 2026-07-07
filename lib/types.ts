@@ -9,9 +9,15 @@ export interface Alert {
   text: string
 }
 
+export interface Mission {
+  id: string
+  name: string
+  summary: string
+}
+
 export interface Shot {
   id: string
-  mission: 'M1' | 'M2'
+  mission: string  // mission id (legacy: 'M1' | 'M2')
   code: string
   type: 'E' | 'T' | 'C' | 'R'
   name: string
@@ -96,10 +102,31 @@ export interface ScenarioResponse {
   notes: string
 }
 
+export type ProjectType = 'commercial' | 'elopement' | 'family' | 'portrait'
+
+export type GearCategory = 'camera_body' | 'lens' | 'lighting' | 'support' | 'audio' | 'accessory' | 'other'
+
+export interface GearInventoryItem {
+  id: string
+  name: string
+  category: GearCategory
+  notes?: string
+}
+
+export interface Resource {
+  id: string
+  name: string
+  content: string
+  projectTypes: ProjectType[] | 'all'
+  createdAt: string
+}
+
 export interface Project {
   id: string
   createdAt: string
   updatedAt: string
+
+  projectType: ProjectType
 
   // Brief
   clientName: string
@@ -112,6 +139,11 @@ export interface Project {
   producer: string
   captureSetup: string
 
+  // Creative approach
+  mood: string
+  tone: string
+  styleReferences: string
+
   // Story foundation
   campaignSentence: string
   character: string
@@ -122,10 +154,9 @@ export interface Project {
   colourPalette: PaletteColour[]
   alerts: Alert[]
 
-  // Stills missions
+  // Stills missions (dynamic)
   isolationNotes: string
-  mission1Summary: string
-  mission2Summary: string
+  missions: Mission[]
 
   // Shot list
   shots: Shot[]
@@ -143,7 +174,7 @@ export interface Project {
   candidateLocations: Location[]
   recceItems: CheckItem[]
 
-  // Workflow
+  // On-Set Monitoring (formerly C1 Workflow)
   workflowSteps: WorkflowStep[]
 
   // Competitive
@@ -157,4 +188,8 @@ export interface Project {
 
   // Checklist
   checklistGroups: ChecklistGroup[]
+
+  // Sharing
+  shareToken: string | null
+  sharedSections: string[]
 }

@@ -1,4 +1,6 @@
-import { Project, Shot, ChecklistGroup } from './types'
+import { Project, Shot, ChecklistGroup, Mission } from './types'
+
+const MISSION_COLORS = ['#87AECC', '#4A7C3F', '#D4821A', '#C0392B']
 
 export function exportMarkdown(project: Project): string {
   const lines: string[] = []
@@ -12,6 +14,9 @@ export function exportMarkdown(project: Project): string {
   lines.push(`**Director:** ${project.director}  `)
   lines.push(`**Producer:** ${project.producer}  `)
   lines.push(`**Capture Setup:** ${project.captureSetup}`)
+  if (project.mood) lines.push(`**Mood:** ${project.mood}`)
+  if (project.tone) lines.push(`**Tone:** ${project.tone}`)
+  if (project.styleReferences) lines.push(`**Style References:** ${project.styleReferences}`)
   lines.push('')
 
   lines.push('## Story Foundation')
@@ -25,23 +30,27 @@ export function exportMarkdown(project: Project): string {
 
   lines.push('## Stills Missions')
   lines.push(`**Isolation Notes:** ${project.isolationNotes}`)
-  lines.push(`**Mission 1:** ${project.mission1Summary}`)
-  lines.push(`**Mission 2:** ${project.mission2Summary}`)
+  const missions: Mission[] = project.missions ?? []
+  missions.forEach((m, i) => {
+    lines.push(`**Mission ${i + 1} — ${m.name}:** ${m.summary}`)
+  })
   lines.push('')
 
   lines.push('## Shot List')
-  const m1 = project.shots.filter(s => s.mission === 'M1')
-  const m2 = project.shots.filter(s => s.mission === 'M2')
-  if (m1.length) {
-    lines.push('### Mission 1 — Designed Graphic Units')
-    m1.forEach(s => {
-      lines.push(`- **[${s.code}] ${s.name}** (${s.type}) — ${s.notes}`)
-      lines.push(`  Lens: ${s.lens} | ${s.settings} | Priority: ${s.priority}`)
-    })
-  }
-  if (m2.length) {
-    lines.push('### Mission 2 — Self-Contained Images')
-    m2.forEach(s => {
+  missions.forEach((m, i) => {
+    const mShots = project.shots.filter(s => s.mission === m.id)
+    if (mShots.length) {
+      lines.push(`### Mission ${i + 1} — ${m.name}`)
+      mShots.forEach(s => {
+        lines.push(`- **[${s.code}] ${s.name}** (${s.type}) — ${s.notes}`)
+        lines.push(`  Lens: ${s.lens} | ${s.settings} | Priority: ${s.priority}`)
+      })
+    }
+  })
+  const unassigned = project.shots.filter(s => !missions.find(m => m.id === s.mission))
+  if (unassigned.length) {
+    lines.push('### Unassigned')
+    unassigned.forEach(s => {
       lines.push(`- **[${s.code}] ${s.name}** (${s.type}) — ${s.notes}`)
       lines.push(`  Lens: ${s.lens} | ${s.settings} | Priority: ${s.priority}`)
     })
@@ -65,6 +74,19 @@ export function exportMarkdown(project: Project): string {
   )
   lines.push('')
 
+  lines.push('## On-Set Monitoring')
+  const setupSteps = project.workflowSteps?.filter(s => s.phase === 'setup') ?? []
+  const onsetSteps = project.workflowSteps?.filter(s => s.phase === 'onset') ?? []
+  if (setupSteps.length) {
+    lines.push('### Setup')
+    setupSteps.forEach(s => lines.push(`${s.number}. **${s.title}** — ${s.notes}`))
+  }
+  if (onsetSteps.length) {
+    lines.push('### On Set')
+    onsetSteps.forEach(s => lines.push(`${s.number}. **${s.title}** — ${s.notes}`))
+  }
+  lines.push('')
+
   lines.push('## Contacts')
   project.contacts.forEach(c => lines.push(`- **${c.name}** — ${c.role} — ${c.email}`))
   lines.push('')
@@ -79,6 +101,8 @@ export function exportMarkdown(project: Project): string {
 }
 
 export function exportHTML(project: Project): string {
+  const missions: Mission[] = project.missions ?? []
+
   const shotRows = (shots: Shot[]) =>
     shots
       .map(s => {
@@ -134,8 +158,19 @@ export function exportHTML(project: Project): string {
       )
       .join('')
 
-  const m1Shots = project.shots.filter(s => s.mission === 'M1')
-  const m2Shots = project.shots.filter(s => s.mission === 'M2')
+  const missionShotsHtml = missions.map((m, i) => {
+    const mShots = project.shots.filter(s => s.mission === m.id)
+    if (!mShots.length) return ''
+    const color = MISSION_COLORS[i % MISSION_COLORS.length]
+    return `
+    <div style="background:${color}20;border:1px solid ${color}40;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:${color};font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Mission ${i + 1} — ${m.name}</div>
+    <table style="margin-bottom:24px"><tbody>${shotRows(mShots)}</tbody></table>`
+  }).join('')
+
+  const unassigned = project.shots.filter(s => !missions.find(m => m.id === s.mission))
+  const unassignedHtml = unassigned.length ? `
+    <div style="background:#A8A49E20;border:1px solid #A8A49E40;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:#A8A49E;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Unassigned Shots</div>
+    <table style="margin-bottom:24px"><tbody>${shotRows(unassigned)}</tbody></table>` : ''
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -174,6 +209,8 @@ table{width:100%;border-collapse:collapse}
       <span><strong style="color:#F0EDE8">Deliverable</strong> ${project.deliverable}</span>
       <span><strong style="color:#F0EDE8">Director</strong> ${project.director}</span>
       <span><strong style="color:#F0EDE8">Producer</strong> ${project.producer}</span>
+      ${project.mood ? `<span><strong style="color:#F0EDE8">Mood</strong> ${project.mood}</span>` : ''}
+      ${project.tone ? `<span><strong style="color:#F0EDE8">Tone</strong> ${project.tone}</span>` : ''}
     </div>
   </header>
 
@@ -199,28 +236,23 @@ table{width:100%;border-collapse:collapse}
   </section>
 
   <section class="section">
-    <div class="eyebrow" style="margin-bottom:8px">Two-Mission Strategy</div>
+    <div class="eyebrow" style="margin-bottom:8px">Missions Strategy</div>
     <h2 style="font-size:28px;margin-bottom:16px">Stills Missions</h2>
     <p style="color:#A8A49E;margin-bottom:20px">${project.isolationNotes}</p>
-    <div class="card" style="border-left:3px solid #87AECC;margin-bottom:12px">
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#87AECC;margin-bottom:6px">Mission 1 — Designed Graphic Units</div>
-      <p>${project.mission1Summary}</p>
-    </div>
-    <div class="card" style="border-left:3px solid #4A7C3F">
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#4A7C3F;margin-bottom:6px">Mission 2 — Self-Contained Images</div>
-      <p>${project.mission2Summary}</p>
-    </div>
+    ${missions.map((m, i) => {
+      const color = MISSION_COLORS[i % MISSION_COLORS.length]
+      return `<div class="card" style="border-left:3px solid ${color};margin-bottom:12px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:${color};margin-bottom:6px">Mission ${i + 1} — ${m.name}</div>
+      <p>${m.summary}</p>
+    </div>`
+    }).join('')}
   </section>
 
   <section class="section">
     <div class="eyebrow" style="margin-bottom:8px">Shot List</div>
     <h2 style="font-size:28px;margin-bottom:20px">Shots</h2>
-    ${m1Shots.length ? `
-    <div style="background:#87AECC20;border:1px solid #87AECC40;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:#87AECC;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Mission 1 — Designed Graphic Units</div>
-    <table style="margin-bottom:24px"><tbody>${shotRows(m1Shots)}</tbody></table>` : ''}
-    ${m2Shots.length ? `
-    <div style="background:#4A7C3F20;border:1px solid #4A7C3F40;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:#4A7C3F;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Mission 2 — Self-Contained Images</div>
-    <table><tbody>${shotRows(m2Shots)}</tbody></table>` : ''}
+    ${missionShotsHtml}
+    ${unassignedHtml}
   </section>
 
   <section class="section">

@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/lib/types'
-import { getProject, saveProject } from '@/lib/storage'
+import { getProject, saveProject, loadFromCloud } from '@/lib/storage'
 import { exportHTML, exportMarkdown } from '@/lib/export'
 import Header from '@/components/layout/Header'
 import ProjectHero from '@/components/layout/ProjectHero'
 import SideNav from '@/components/layout/SideNav'
+import ShareModal from '@/components/ShareModal'
 import Brief from '@/components/sections/Brief'
 import StillsMissions from '@/components/sections/StillsMissions'
 import ShotList from '@/components/sections/ShotList'
@@ -38,11 +39,28 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [project, setProject] = useState<Project | null>(null)
   const [activeSection, setActiveSection] = useState('brief')
   const [notFound, setNotFound] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   useEffect(() => {
-    const p = getProject(id)
-    if (!p) { setNotFound(true); return }
-    setProject(p)
+    // Show local cache immediately, then hydrate from cloud for cross-device sync
+    const local = getProject(id)
+    if (local) setProject(local)
+
+    loadFromCloud().then(projects => {
+      const fresh = projects.find(p => p.id === id)
+      if (fresh) {
+        setProject(fresh)
+        setHydrated(true)
+      } else if (!local) {
+        setNotFound(true)
+      } else {
+        setHydrated(true)
+      }
+    }).catch(() => {
+      if (!local) setNotFound(true)
+      setHydrated(true)
+    })
   }, [id])
 
   const handleChange = useCallback((updates: Partial<Project>) => {
@@ -109,8 +127,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         shootDate={project.shootDate}
         onExportHTML={handleExportHTML}
         onExportMarkdown={handleExportMarkdown}
+        onShare={() => setShowShare(true)}
       />
       <ProjectHero project={project} />
+
+      {!hydrated && (
+        <div style={{ height: 2, background: 'var(--bg3)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: '0', background: 'var(--accent)', animation: 'slide 1.2s ease-in-out infinite' }} />
+          <style>{`@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
+        </div>
+      )}
 
       <div className="project-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
         <SideNav active={activeSection} onSelect={setActiveSection} />
@@ -118,6 +144,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {sections[activeSection]}
         </main>
       </div>
+
+      {showShare && (
+        <ShareModal
+          project={project}
+          onChange={handleChange}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   )
 }

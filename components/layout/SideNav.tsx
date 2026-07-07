@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { id: 'light', label: 'Light Strategy' },
   { id: 'gear', label: 'Gear Plan' },
   { id: 'locations', label: 'Locations' },
-  { id: 'workflow', label: 'C1 Workflow' },
+  { id: 'workflow', label: 'On-Set Monitoring' },
   { id: 'competitive', label: 'Competitive' },
   { id: 'openitems', label: 'Open Items' },
   { id: 'contacts', label: 'Contacts' },

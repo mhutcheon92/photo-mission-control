@@ -74,7 +74,7 @@ export default function C1Workflow({ project, onChange }: Props) {
 
   return (
     <section>
-      <SectionHeader eyebrow="C1 Workflow" title="Capture One Workflow" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
+      <SectionHeader eyebrow="On-Set Monitoring" title="On-Set Monitoring" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
       {renderPhase('setup', 'Setup')}
       {renderPhase('onset', 'On Set')}
     </section>

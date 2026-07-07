@@ -48,6 +48,13 @@ export default function Brief({ project, onChange }: Props) {
           </div>
           <EditField label="Theme Word" value={project.themeWord} onChange={v => onChange({ themeWord: v })} />
 
+          <div style={{ margin: '8px 0 20px', padding: '16px 20px', background: 'var(--bg3)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 16 }}>Creative Approach</div>
+            <EditField label="Mood" value={project.mood ?? ''} onChange={v => onChange({ mood: v })} />
+            <EditField label="Tone" value={project.tone ?? ''} onChange={v => onChange({ tone: v })} />
+            <EditField label="Style References" value={project.styleReferences ?? ''} onChange={v => onChange({ styleReferences: v })} multiline />
+          </div>
+
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Colour Palette</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 8 }}>
@@ -123,6 +130,32 @@ export default function Brief({ project, onChange }: Props) {
             <div style={{ marginBottom: 20 }}>
               <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginRight: 8 }}>Theme</span>
               <span style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 22 }}>{project.themeWord}</span>
+            </div>
+          )}
+
+          {(project.mood || project.tone || project.styleReferences) && (
+            <div style={{ marginBottom: 20, padding: '14px 16px', background: 'var(--bg3)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>Creative Approach</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {project.mood && (
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>Mood</span>
+                    <span style={{ color: 'var(--text-2)' }}>{project.mood}</span>
+                  </div>
+                )}
+                {project.tone && (
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>Tone</span>
+                    <span style={{ color: 'var(--text-2)' }}>{project.tone}</span>
+                  </div>
+                )}
+                {project.styleReferences && (
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>References</span>
+                    <span style={{ color: 'var(--text-2)' }}>{project.styleReferences}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

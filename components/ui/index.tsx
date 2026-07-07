@@ -132,20 +132,24 @@ export function Badge({ label }: { label: string }) {
 }
 
 // ── MissionBar ────────────────────────────────────────────────────────────────
-export function MissionBar({ mission }: { mission: 'M1' | 'M2' }) {
-  const isM1 = mission === 'M1'
+const MISSION_PALETTE = ['#87AECC', '#4A7C3F', '#D4821A', '#C0392B', '#A8A49E']
+
+export function MissionBar({ name, index = 0 }: { name: string; index?: number }) {
+  const color = MISSION_PALETTE[index % MISSION_PALETTE.length]
   return (
     <div style={{
       padding: '10px 16px', borderRadius: 6, marginBottom: 16,
-      background: isM1 ? 'rgba(135,174,204,0.1)' : 'rgba(74,124,63,0.1)',
-      border: `1px solid ${isM1 ? 'rgba(135,174,204,0.3)' : 'rgba(74,124,63,0.3)'}`,
-      color: isM1 ? 'var(--blue)' : 'var(--green)',
+      background: `${color}1A`,
+      border: `1px solid ${color}4D`,
+      color,
       fontSize: 12, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const,
     }}>
-      {isM1 ? 'Mission 1 — Designed Graphic Units' : 'Mission 2 — Self-Contained Images'}
+      {name}
     </div>
   )
 }
+
+export { MISSION_PALETTE }
 
 // ── ShotRow ───────────────────────────────────────────────────────────────────
 const shotTypeColors: Record<string, string> = {

@@ -1,12 +1,41 @@
-import { Project } from './types'
+import { Project, Mission } from './types'
 
 const STORAGE_KEY = 'preproapp_projects'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateProject(raw: any): Project {
+  // Forward migration: mission1Summary/mission2Summary → missions[]
+  if (raw.mission1Summary !== undefined || raw.mission2Summary !== undefined) {
+    const missions: Mission[] = []
+    if (raw.mission1Summary) {
+      missions.push({ id: 'M1', name: 'Designed Graphic Units', summary: raw.mission1Summary })
+    }
+    if (raw.mission2Summary) {
+      missions.push({ id: 'M2', name: 'Self-Contained Images', summary: raw.mission2Summary })
+    }
+    const { mission1Summary: _m1, mission2Summary: _m2, ...rest } = raw
+    raw = { ...rest, missions: missions.length > 0 ? missions : (raw.missions ?? []) }
+  }
+
+  // Fill defaults for fields added after initial release
+  return {
+    ...raw,
+    projectType: raw.projectType ?? 'commercial',
+    mood: raw.mood ?? '',
+    tone: raw.tone ?? '',
+    styleReferences: raw.styleReferences ?? '',
+    missions: raw.missions ?? [],
+    shareToken: raw.shareToken ?? null,
+    sharedSections: raw.sharedSections ?? [],
+  }
+}
 
 export function getProjects(): Project[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    return JSON.parse(raw) as Project[]
+    const parsed = JSON.parse(raw) as unknown[]
+    return parsed.map(migrateProject)
   } catch {
     return []
   }
@@ -19,8 +48,9 @@ export async function loadFromCloud(): Promise<Project[]> {
     if (!res.ok) return getProjects()
     const { projects } = await res.json()
     if (Array.isArray(projects)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
-      return projects
+      const migrated = projects.map(migrateProject)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+      return migrated
     }
   } catch {}
   return getProjects()
@@ -81,8 +111,10 @@ export function duplicateProject(id: string): Project | null {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       campaignName: source.campaignName + ' (Copy)',
+      shareToken: null,
+      sharedSections: [],
     }
-    saveProject(copy) // saveProject already calls syncToCloud
+    saveProject(copy)
     return copy
   } catch {
     return null

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRequire } from 'node:module'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,35 +20,13 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const arrayBuffer = await file.arrayBuffer()
-    const data = new Uint8Array(arrayBuffer)
+    const buffer = Buffer.from(arrayBuffer)
 
-    // Use legacy build — designed for Node.js environments
-    const { getDocument, GlobalWorkerOptions } = await import(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore — pdfjs-dist legacy is not typed separately
-      'pdfjs-dist/legacy/build/pdf.mjs'
-    )
+    // pdf-parse handles Node.js compatibility (no browser APIs required)
+    const pdfParse = (await import('pdf-parse')).default
+    const result = await pdfParse(buffer)
 
-    // Resolve the worker from node_modules using createRequire so the path
-    // works in both local dev and Vercel's compiled serverless bundle
-    const _require = createRequire(import.meta.url)
-    const workerPath = _require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
-    GlobalWorkerOptions.workerSrc = `file://${workerPath}`
-
-    const pdf = await getDocument({ data }).promise
-    const pages: string[] = []
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i)
-      const textContent = await page.getTextContent()
-      const pageText = (textContent.items as unknown[])
-        .filter((item) => typeof item === 'object' && item !== null && 'str' in item)
-        .map((item) => (item as { str: string }).str)
-        .join(' ')
-      pages.push(pageText)
-    }
-
-    return NextResponse.json({ text: pages.join('\n\n') })
+    return NextResponse.json({ text: result.text })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[parse-pdf]', message)

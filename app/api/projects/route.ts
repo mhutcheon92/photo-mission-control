@@ -19,7 +19,10 @@ export async function GET(req: NextRequest) {
     const { blobs } = await list({ prefix: BLOB_PATH })
     if (blobs.length === 0) return NextResponse.json({ projects: [] })
 
-    const res = await fetch(blobs[0].url, { cache: 'no-store' })
+    const res = await fetch(blobs[0].url, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      cache: 'no-store',
+    })
     const projects = await res.json()
     return NextResponse.json({ projects })
   } catch {
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest) {
   try {
     const { projects } = await req.json()
     await put(BLOB_PATH, JSON.stringify(projects), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType: 'application/json',
     })

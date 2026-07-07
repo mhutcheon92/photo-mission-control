@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/lib/types'
-import { getProjects, deleteProject, duplicateProject, calcChecklistProgress } from '@/lib/storage'
+import { getProjects, loadFromCloud, deleteProject, duplicateProject, calcChecklistProgress } from '@/lib/storage'
 import Header from '@/components/layout/Header'
 import { ProgressBar } from '@/components/ui'
 
@@ -15,7 +15,9 @@ export default function Dashboard() {
   const router = useRouter()
 
   useEffect(() => {
+    // Show local cache immediately, then hydrate from cloud
     setProjects(getProjects())
+    loadFromCloud().then(setProjects)
   }, [])
 
   const handleDelete = (id: string) => {

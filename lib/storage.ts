@@ -12,6 +12,29 @@ export function getProjects(): Project[] {
   }
 }
 
+// Load from cloud, update localStorage, return result
+export async function loadFromCloud(): Promise<Project[]> {
+  try {
+    const res = await fetch('/api/projects')
+    if (!res.ok) return getProjects()
+    const { projects } = await res.json()
+    if (Array.isArray(projects)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+      return projects
+    }
+  } catch {}
+  return getProjects()
+}
+
+// Fire-and-forget cloud sync
+export function syncToCloud(projects: Project[]): void {
+  fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projects }),
+  }).catch(() => {})
+}
+
 export function getProject(id: string): Project | null {
   try {
     const projects = getProjects()
@@ -32,6 +55,7 @@ export function saveProject(project: Project): void {
       projects.push(updated)
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+    syncToCloud(projects)
   } catch {
     // silent fail
   }
@@ -41,6 +65,7 @@ export function deleteProject(id: string): void {
   try {
     const projects = getProjects().filter(p => p.id !== id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+    syncToCloud(projects)
   } catch {
     // silent fail
   }
@@ -57,7 +82,7 @@ export function duplicateProject(id: string): Project | null {
       updatedAt: new Date().toISOString(),
       campaignName: source.campaignName + ' (Copy)',
     }
-    saveProject(copy)
+    saveProject(copy) // saveProject already calls syncToCloud
     return copy
   } catch {
     return null

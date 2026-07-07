@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put, list } from '@vercel/blob'
+import { put, get, list } from '@vercel/blob'
+
+export const dynamic = 'force-dynamic'
 
 const BLOB_PATH = 'projects.json'
 
@@ -18,14 +20,13 @@ export async function GET(req: NextRequest) {
   try {
     const { blobs } = await list({ prefix: BLOB_PATH })
     if (blobs.length === 0) return NextResponse.json({ projects: [] })
-
-    const res = await fetch(blobs[0].url, {
-      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-      cache: 'no-store',
-    })
-    const projects = await res.json()
+    const result = await get(blobs[0].url, { access: 'private' })
+    if (!result) return NextResponse.json({ projects: [] })
+    const text = await new Response(result.stream).text()
+    const projects = JSON.parse(text)
     return NextResponse.json({ projects })
-  } catch {
+  } catch (e: unknown) {
+    console.error('[projects GET]', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ projects: [] })
   }
 }
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     await put(BLOB_PATH, JSON.stringify(projects), {
       access: 'private',
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: 'application/json',
     })
     return NextResponse.json({ ok: true })

@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer)
 
     // pdf-parse handles Node.js compatibility (no browser APIs required)
-    const pdfParse = (await import('pdf-parse')).default
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfParse = (await import('pdf-parse')) as any
     const result = await pdfParse(buffer)
 
     return NextResponse.json({ text: result.text })

@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
       contentType: 'application/json',
     })
     return NextResponse.json({ ok: true })
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('[projects POST]', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -100,10 +100,9 @@ async function extractPdfTextClientSide(file: File): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfjsLib = ((mod as any).default ?? mod) as typeof import('pdfjs-dist')
 
-  // Point the worker at the CDN copy matching the installed version — avoids
-  // needing a worker file in /public and sidesteps Turbopack bundling quirks.
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+  // Worker file is copied to public/ by the postinstall script in package.json.
+  // Vercel runs postinstall after npm install, so it's always present in production.
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []

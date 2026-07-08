@@ -6,7 +6,6 @@ import { Project, ProjectType, Mission } from '@/lib/types'
 import { saveProject } from '@/lib/storage'
 import { generateProjectFromBrief } from '@/lib/generate'
 import { parseFile, Attachment } from '@/lib/attachments'
-import { getResources } from '@/lib/resources'
 import { getGearInventory } from '@/lib/gearInventory'
 import Header from '@/components/layout/Header'
 import { EditField } from '@/components/ui'
@@ -131,11 +130,9 @@ function NewProjectContent() {
     }, 1200)
 
     try {
-      const resources = getResources()
       const gearInventory = getGearInventory()
       const generated = await generateProjectFromBrief(brief, additionalContext, attachments, {
         projectType,
-        resources,
         gearInventory,
       })
       const base = emptyProject(projectType)

@@ -72,7 +72,11 @@ async function extractPdfText(file: File): Promise<string> {
   const form = new FormData()
   form.append('file', file)
   const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
+  if (!res.ok) {
+    let detail = `PDF parsing failed (${res.status})`
+    try { const j = await res.json(); if (j.error) detail = j.error } catch { /* non-JSON error body */ }
+    throw new Error(detail)
+  }
   const json = await res.json()
-  if (!res.ok) throw new Error(json.error || 'PDF parsing failed')
-  return json.text as string
+  return (json.text as string) ?? ''
 }

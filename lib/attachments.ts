@@ -53,15 +53,6 @@ function readAsText(file: File): Promise<string> {
   })
 }
 
-function readAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as ArrayBuffer)
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
-  })
-}
-
 function readAsBase64(file: File): Promise<{ base64: string; mediaType: Attachment['mediaType'] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -78,25 +69,10 @@ function readAsBase64(file: File): Promise<{ base64: string; mediaType: Attachme
 }
 
 async function extractPdfText(file: File): Promise<string> {
-  const arrayBuffer = await readAsArrayBuffer(file)
-
-  // Lazy-import pdfjs-dist to keep it out of the main bundle
-  const pdfjsLib = await import('pdfjs-dist')
-
-  // Serve the worker from public/ — import.meta.url doesn't resolve correctly in Next.js/Turbopack
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const pages: string[] = []
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const textContent = await page.getTextContent()
-    const pageText = textContent.items
-      .map((item: unknown) => (item as { str: string }).str)
-      .join(' ')
-    pages.push(pageText)
-  }
-
-  return pages.join('\n\n')
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'PDF parsing failed')
+  return json.text as string
 }

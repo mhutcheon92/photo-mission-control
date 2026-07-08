@@ -41,17 +41,36 @@ export function getProjects(): Project[] {
   }
 }
 
-// Load from cloud, update localStorage, return result
+// Load from cloud and merge with localStorage — local wins for any project that's newer locally or absent from cloud
 export async function loadFromCloud(): Promise<Project[]> {
   try {
     const res = await fetch('/api/projects')
     if (!res.ok) return getProjects()
-    const { projects } = await res.json()
-    if (Array.isArray(projects)) {
-      const migrated = projects.map(migrateProject)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
-      return migrated
+    const { projects: cloudRaw } = await res.json()
+    if (!Array.isArray(cloudRaw)) return getProjects()
+
+    const cloud = cloudRaw.map(migrateProject) as Project[]
+    const local = getProjects()
+
+    const merged = new Map<string, Project>()
+    for (const p of cloud) merged.set(p.id, p)
+    for (const p of local) {
+      const inCloud = merged.get(p.id)
+      if (!inCloud || new Date(p.updatedAt) > new Date(inCloud.updatedAt)) {
+        merged.set(p.id, p)
+      }
     }
+
+    const result = Array.from(merged.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(result))
+
+    // Push any local-only projects up to cloud
+    const hasLocalOnly = local.some(p => !cloud.find(c => c.id === p.id))
+    if (hasLocalOnly) syncToCloud(result)
+
+    return result
   } catch {}
   return getProjects()
 }

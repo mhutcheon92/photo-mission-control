@@ -161,6 +161,7 @@ function NewProjectContent() {
         shareToken: null,
         sharedSections: [],
       }
+      saveProject(merged)
       setProject(merged)
       setStep('review')
     } catch (e) {

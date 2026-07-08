@@ -68,51 +68,18 @@ function readAsBase64(file: File): Promise<{ base64: string; mediaType: Attachme
   })
 }
 
-// Vercel serverless functions cap request bodies at ~4.5MB.
-// Files under 4MB go through the server-side Claude parser (better quality).
-// Larger files fall back to client-side pdfjs running on the main thread.
-const SERVER_PARSE_LIMIT = 4 * 1024 * 1024
-
 async function extractPdfText(file: File): Promise<string> {
-  if (file.size < SERVER_PARSE_LIMIT) {
-    const form = new FormData()
-    form.append('file', file)
-    const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
-    if (res.ok) {
-      const json = await res.json()
-      return (json.text as string) ?? ''
-    }
-    // Fall through to client-side on any server error
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
+  if (!res.ok) {
+    let detail = `PDF parsing failed (${res.status})`
+    try { const j = await res.json(); if (j.error) detail = j.error } catch { /* non-JSON body */ }
+    if (res.status === 413) throw new Error(
+      'This PDF is too large to process (limit ~4MB). Save a smaller version or paste the brief text directly into the field.'
+    )
+    throw new Error(detail)
   }
-  return extractPdfTextClientSide(file)
-}
-
-async function extractPdfTextClientSide(file: File): Promise<string> {
-  const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as ArrayBuffer)
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
-  })
-
-  // Dynamic import — handle both ESM default and CJS-wrapped exports
-  const mod = await import('pdfjs-dist')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfjsLib = ((mod as any).default ?? mod) as typeof import('pdfjs-dist')
-
-  // Worker file is copied to public/ by the postinstall script in package.json.
-  // Vercel runs postinstall after npm install, so it's always present in production.
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const pages: string[] = []
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const textContent = await page.getTextContent()
-    const pageText = textContent.items
-      .map((item: unknown) => (item as { str: string }).str)
-      .join(' ')
-    pages.push(pageText)
-  }
-  return pages.join('\n\n')
+  const json = await res.json()
+  return (json.text as string) ?? ''
 }

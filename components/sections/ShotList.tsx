@@ -42,7 +42,7 @@ function ShotEditor({
 }) {
   return (
     <div style={{ background: 'var(--bg3)', border: '1px solid var(--border-med)', borderRadius: 8, padding: 16, marginBottom: 10 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 80px', gap: 10, marginBottom: 10 }}>
+      <div className="shot-ed-row1">
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Name</label>
           <input value={shot.name} onChange={e => onChange({ ...shot, name: e.target.value })} style={inputStyle} />
@@ -69,7 +69,7 @@ function ShotEditor({
           </select>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div className="shot-ed-row2">
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Lens</label>
           <input value={shot.lens} onChange={e => onChange({ ...shot, lens: e.target.value })} style={inputStyle} />
@@ -127,6 +127,14 @@ export default function ShotList({ project, onChange }: Props) {
 
   return (
     <section>
+      <style>{`
+        .shot-ed-row1 { display: grid; grid-template-columns: 1fr 1fr 80px 80px; gap: 10px; margin-bottom: 10px; }
+        .shot-ed-row2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        @media (max-width: 767px) {
+          .shot-ed-row1 { grid-template-columns: 1fr 1fr; }
+          .shot-ed-row2 { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
       <SectionHeader eyebrow="Shot List" title="Shots" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
 
       {editing ? (

@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 const NAV_ITEMS = [
   { id: 'brief', label: 'Brief' },
   { id: 'missions', label: 'Stills Missions' },
@@ -20,6 +22,12 @@ interface SideNavProps {
 }
 
 export default function SideNav({ active, onSelect }: SideNavProps) {
+  // Scroll active pill into view on mobile when section changes
+  useEffect(() => {
+    const btn = document.querySelector<HTMLElement>(`[data-nav-id="${active}"]`)
+    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [active])
+
   return (
     <>
       {/* Desktop side nav */}
@@ -58,8 +66,8 @@ export default function SideNav({ active, onSelect }: SideNavProps) {
 
       {/* Mobile horizontal nav */}
       <nav style={{
-        display: 'flex', overflowX: 'auto', gap: 4,
-        padding: '12px 16px', borderBottom: '1px solid var(--border)',
+        display: 'flex', overflowX: 'auto', gap: 6,
+        padding: '10px 16px', borderBottom: '1px solid var(--border)',
         scrollbarWidth: 'none',
       }} className="show-mobile">
         {NAV_ITEMS.map(item => {
@@ -67,13 +75,14 @@ export default function SideNav({ active, onSelect }: SideNavProps) {
           return (
             <button
               key={item.id}
+              data-nav-id={item.id}
               onClick={() => onSelect(item.id)}
               style={{
-                padding: '6px 14px', borderRadius: 20, flexShrink: 0,
+                padding: '10px 16px', borderRadius: 20, flexShrink: 0,
                 background: isActive ? 'var(--red-light)' : 'var(--bg3)',
                 border: `1px solid ${isActive ? 'rgba(200,169,110,0.4)' : 'var(--border)'}`,
                 color: isActive ? 'var(--accent)' : 'var(--text-2)',
-                fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+                fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
               {item.label}

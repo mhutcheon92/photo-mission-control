@@ -24,11 +24,18 @@ export default function Brief({ project, onChange }: Props) {
 
   return (
     <section>
+      <style>{`
+        .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .brief-grid-mb { margin-bottom: 24px; }
+        @media (max-width: 767px) {
+          .brief-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
       <SectionHeader eyebrow="Story Foundation" title="Brief" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
 
       {editing ? (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          <div className="brief-grid brief-grid-mb">
             <EditField label="Client Name" value={project.clientName} onChange={v => onChange({ clientName: v })} />
             <EditField label="Campaign Name" value={project.campaignName} onChange={v => onChange({ campaignName: v })} />
             <EditField label="Shoot Date" value={project.shootDate} onChange={v => onChange({ shootDate: v })} />
@@ -40,7 +47,7 @@ export default function Brief({ project, onChange }: Props) {
           </div>
           <EditField label="Capture Setup" value={project.captureSetup} onChange={v => onChange({ captureSetup: v })} />
           <EditField label="Campaign Sentence" value={project.campaignSentence} onChange={v => onChange({ campaignSentence: v })} multiline />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="brief-grid">
             <EditField label="Character" value={project.character} onChange={v => onChange({ character: v })} multiline />
             <EditField label="Location" value={project.location} onChange={v => onChange({ location: v })} multiline />
             <EditField label="Event" value={project.event} onChange={v => onChange({ event: v })} multiline />

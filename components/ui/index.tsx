@@ -13,12 +13,12 @@ interface SectionHeaderProps {
 }
 export function SectionHeader({ eyebrow, title, editing, onToggleEdit, progress }: SectionHeaderProps) {
   return (
-    <div className="flex items-start justify-between mb-6">
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
       <div>
         <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 4 }}>
           {eyebrow}
         </div>
-        <h2 style={{ fontFamily: 'var(--font-serif, DM Serif Display, serif)', fontSize: 28, color: 'var(--text)', lineHeight: 1.2 }}>
+        <h2 style={{ fontFamily: 'var(--font-serif, DM Serif Display, serif)', fontSize: 'clamp(20px, 5.5vw, 28px)', color: 'var(--text)', lineHeight: 1.2 }}>
           {title}
         </h2>
         {progress && progress.total > 0 && (
@@ -156,32 +156,51 @@ const shotTypeColors: Record<string, string> = {
   E: '#87AECC', T: '#A8A49E', C: '#D4821A', R: '#C0392B',
 }
 export function ShotRow({ shot }: { shot: Shot }) {
+  const meta = [shot.lens, shot.settings, shot.scriptRef].filter(Boolean).join(' · ')
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '48px 1fr 100px 120px 80px 64px',
-      gap: 8, alignItems: 'center',
-      padding: '10px 12px',
-      borderBottom: '1px solid var(--border)',
-      fontSize: 13,
-    }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-        <span style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: shotTypeColors[shot.type] ?? '#6B6760',
-          color: '#111110', fontWeight: 700, fontSize: 11,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>{shot.type}</span>
-        <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>{shot.code}</span>
+    <div className="shot-row">
+      <style>{`
+        .shot-row { display: grid; grid-template-columns: 48px 1fr 100px 120px 80px 64px; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .shot-row-dt { display: contents; }
+        .shot-row-mb { display: none; }
+        @media (max-width: 767px) {
+          .shot-row { display: block; padding: 12px 14px; }
+          .shot-row-dt { display: none; }
+          .shot-row-mb { display: block; }
+        }
+      `}</style>
+
+      {/* Desktop: display:contents makes children direct grid items */}
+      <div className="shot-row-dt">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: shotTypeColors[shot.type] ?? '#6B6760', color: '#111110', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{shot.type}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>{shot.code}</span>
+        </div>
+        <div>
+          <div style={{ fontWeight: 600, color: 'var(--text)' }}>{shot.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{shot.notes}</div>
+        </div>
+        <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.lens}</div>
+        <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.settings}</div>
+        <div style={{ color: 'var(--text-3)', fontSize: 11, fontFamily: 'monospace' }}>{shot.scriptRef}</div>
+        <div><Badge label={shot.priority} /></div>
       </div>
-      <div>
-        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{shot.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{shot.notes}</div>
+
+      {/* Mobile: card layout — type circle + name + priority, notes + meta below */}
+      <div className="shot-row-mb">
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+            <span style={{ width: 30, height: 30, borderRadius: '50%', background: shotTypeColors[shot.type] ?? '#6B6760', color: '#111110', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{shot.type}</span>
+            <span style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: 'monospace' }}>{shot.code}</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{shot.name}</div>
+            {shot.notes && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{shot.notes}</div>}
+            {meta && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{meta}</div>}
+          </div>
+          <div style={{ flexShrink: 0 }}><Badge label={shot.priority} /></div>
+        </div>
       </div>
-      <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.lens}</div>
-      <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.settings}</div>
-      <div style={{ color: 'var(--text-3)', fontSize: 11, fontFamily: 'monospace' }}>{shot.scriptRef}</div>
-      <div><Badge label={shot.priority} /></div>
     </div>
   )
 }

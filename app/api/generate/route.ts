@@ -64,9 +64,11 @@ export async function POST(req: NextRequest) {
 
   const data = await response.json()
   const stopReason: string = data.stop_reason ?? 'unknown'
-  const raw: string = data.content?.[0]?.text ?? ''
+  // Find the first text block — Sonnet 5 may prepend a thinking block before the text block
+  const textBlock = (data.content ?? []).find((b: { type: string }) => b.type === 'text')
+  const raw: string = textBlock?.text ?? ''
 
-  console.log('[generate] stop_reason:', stopReason, '| raw length:', raw.length, '| first 80:', raw.slice(0, 80), '| last 80:', raw.slice(-80))
+  console.log('[generate] stop_reason:', stopReason, '| blocks:', (data.content ?? []).map((b: { type: string }) => b.type).join(','), '| raw length:', raw.length, '| first 120:', raw.slice(0, 120))
 
   // Extract the outermost JSON object — works regardless of fences or preamble
   const start = raw.indexOf('{')

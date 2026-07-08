@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 16000,
+      model: 'claude-sonnet-5',
+      max_tokens: 32000,
       system: systemPrompt,
       messages: [{ role: 'user', content }],
     }),
@@ -68,10 +68,6 @@ export async function POST(req: NextRequest) {
 
   console.log('[generate] stop_reason:', stopReason, '| raw length:', raw.length, '| first 80:', raw.slice(0, 80), '| last 80:', raw.slice(-80))
 
-  if (stopReason === 'max_tokens') {
-    return NextResponse.json({ error: 'Response was cut off — output was too long. Try a shorter brief.' }, { status: 500 })
-  }
-
   // Extract the outermost JSON object — works regardless of fences or preamble
   const start = raw.indexOf('{')
   const end = raw.lastIndexOf('}')
@@ -81,6 +77,13 @@ export async function POST(req: NextRequest) {
     const project = JSON.parse(jsonStr)
     return NextResponse.json({ project })
   } catch (e) {
+    if (stopReason === 'max_tokens') {
+      console.log('[generate] max_tokens hit, JSON unparseable')
+      return NextResponse.json(
+        { error: 'The AI output was cut short. Try reducing your brief length or number of attachments.' },
+        { status: 500 }
+      )
+    }
     console.log('[generate] parse error:', e, '| jsonStr first 200:', jsonStr.slice(0, 200), '| jsonStr last 200:', jsonStr.slice(-200))
     return NextResponse.json({ error: 'Failed to parse AI response', raw: raw.slice(0, 500) }, { status: 500 })
   }

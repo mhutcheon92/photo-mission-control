@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,30 +20,12 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const arrayBuffer = await file.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const buffer = Buffer.from(arrayBuffer)
 
-    // Use Claude's native PDF understanding — no pdfjs or native modules needed
-    const client = new Anthropic()
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8000,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
-          },
-          {
-            type: 'text',
-            text: 'Extract all text content from this document. Output only the text, preserving structure. No commentary or explanation.',
-          },
-        ],
-      }],
-    })
-
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    return NextResponse.json({ text })
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse')
+    const data = await pdfParse(buffer)
+    return NextResponse.json({ text: data.text as string })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[parse-pdf]', message)

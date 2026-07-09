@@ -10,6 +10,7 @@ Private single-user web app for commercial photography pre-production planning. 
 - **React 19**, **TypeScript**, **Tailwind CSS v4**
 - **@anthropic-ai/sdk** — AI project generation from creative brief
 - **@vercel/blob** v2.5 — cloud persistence (private store)
+- **@tiptap/react + @tiptap/starter-kit + @tiptap/extension-underline** — rich text editing for all multiline fields
 - **pdf-parse** — server-side PDF text extraction in `api/parse-pdf/route.ts` (no AI call; runs in milliseconds)
 - Deployed on Vercel; subdomain via Cloudflare DNS
 
@@ -60,24 +61,34 @@ All types are in `lib/types.ts`. The `Project` interface is the canonical shape 
 
 ```
 app/
-  globals.css              — CSS custom properties, no Tailwind utilities for layout
+  globals.css              — CSS custom properties + rich text styles (.ProseMirror, .rich-display)
   layout.tsx               — Cormorant Garamond (serif) + Inter (sans), font CSS variables
-  page.tsx                 — Dashboard: project cards + cloud hydration on mount
+  page.tsx                 — Dashboard: project cards + cloud hydration on mount (maxWidth 1100, centered)
   login/page.tsx           — Password form, sets portal_auth cookie
-  project/[id]/page.tsx    — Project editor, debounced autosave (500ms)
+  project/[id]/page.tsx    — Project editor, debounced autosave (500ms); content wrapped in
+                             .content-shell (max-width 75vw desktop, 95vw mobile via media query)
   project/new/page.tsx     — New project: scratch or AI-generated from brief
   api/auth/route.ts        — Sets/clears portal_auth cookie
   api/generate/route.ts    — Streams Claude response to populate project from brief
+  api/alerts/resolve/route.ts — POST: generates two AI resolution suggestions for an alert
   api/parse-pdf/route.ts   — Extracts text from uploaded PDF using pdf-parse (no AI)
   api/projects/route.ts    — GET/POST cloud sync via Vercel Blob
 
 components/
   layout/
     Header.tsx             — Top bar with campaign name + export dropdown
-    ProjectHero.tsx        — Large campaign title + metadata strip
+    ProjectHero.tsx        — Campaign title + metadata strip; all fields use RichTextEditor
     SideNav.tsx            — Desktop sidebar + mobile horizontal pill nav (both rendered, CSS-toggled)
   sections/                — One file per project section; all receive { project, onChange }
-  ui/index.tsx             — Shared primitives (ProgressBar, etc.)
+    AlertStrip.tsx         — Pinned "Needs attention" strip with AI-drafted resolutions
+    Brief.tsx              — Story foundation, campaign sentence, constraints; uses RichTextEditor
+    StillsMissions.tsx     — Mission cards with inline editing; uses RichTextEditor
+    LightStrategy.tsx      — Light notes, windows, scenarios; uses RichTextEditor
+    Contacts.tsx           — Contact cards with suggested contacts from brief
+    [others]               — Gear Plan, Locations, C1Workflow, Competitive, OpenItems, Checklist
+                             still use old Edit/Done toggle + SectionHeader pattern (deferred)
+  ui/index.tsx             — Shared primitives: InlineEditProvider, InlineField, InlineTextarea,
+                             RichTextEditor, AutoTextarea, Card, Badge, SectionHeader, etc.
 
 lib/
   types.ts                 — All TypeScript interfaces; Project is the root type
@@ -85,6 +96,8 @@ lib/
   generate.ts              — Claude prompt construction for brief → project
   export.ts                — HTML and Markdown export renderers
   attachments.ts           — PDF/image parsing for brief upload
+  resolveAlert.ts          — Fetch helper for /api/alerts/resolve
+  suggestContacts.ts       — Scans open items for "Owner: NAME" patterns to suggest contacts
 ```
 
 ## Styling Rules
@@ -101,15 +114,37 @@ Do **not** add `@media` blocks to `globals.css` expecting them to override compo
 
 ```
 --bg / --bg2 / --bg3 / --bg4   dark backgrounds, lightest to darkest
+--surface / --surface-alt       card / secondary card backgrounds
+--input-bg                      dark input background
 --accent / --accent-light       gold #c8a96e / gold at 12% opacity
+--gold / --gold-hover / --gold-on  primary action color / hover / text-on-gold
+--rust / --rust-tint            orange-red constraint color
+--urgent-bg / --urgent-fg       red alert badge colors
+--flag-bg / --flag-fg           amber flag badge colors
 --red / --red-light             alias for --accent (legacy — do not use for danger)
 --danger / --danger-light       red #C0392B / red at 12% opacity
 --text / --text-2 / --text-3   primary / secondary / muted text
 --border / --border-med         subtle / medium border
 --amber / --green / --blue      alert and priority badge colors
+--font-mono                     ui-monospace stack (JetBrains Mono removed — incompatible with Turbopack prod build)
 ```
 
-**Fonts:** `var(--font-serif)` = Cormorant Garamond (headings, display); `var(--font-sans)` = Inter (body). Font variables are injected via `layout.tsx`.
+**Fonts:** `var(--font-serif)` = Cormorant Garamond (headings, display); `var(--font-sans)` = Inter (body). Injected via `layout.tsx`. Do **not** add Google Font imports for monospace fonts — `next/font/google` with monospace fonts breaks Turbopack production builds.
+
+## Inline Editing Pattern
+
+All editable fields use a shared `InlineEditProvider` context (in `app/project/[id]/page.tsx`) that tracks which field is currently editing by `fieldKey`. Only one field can be in edit mode at a time.
+
+- **`InlineField`** — single-line `<input>`, Enter commits, Escape cancels. Used for short text (mission name, shot code, time range, etc.).
+- **`InlineTextarea`** — multiline `AutoTextarea`, blur commits, Escape cancels. Still defined but only used internally. **Prefer `RichTextEditor` for all user-facing multiline fields.**
+- **`RichTextEditor`** — Tiptap-powered rich text editor. Same props interface as `InlineTextarea`. Supports bold, italic, underline, bullet list, ordered list via a fixed toolbar above the field. Stores content as HTML; displays HTML in read mode (`dangerouslySetInnerHTML`). Legacy plain-text values (including "- " bullet format) fall back to `renderProseBullets()` for display. Escape cancels without saving; blur commits.
+- **`AutoTextarea`** — base auto-growing textarea. Enter (no Shift) blurs/commits; Shift+Enter inserts newline. Used in AlertStrip resolution drafts and checklist items.
+
+## Layout Width
+
+- **Dashboard** (`app/page.tsx`): `<main style={{ maxWidth: 1100, margin: '0 auto' }}>`
+- **Project editor** (`app/project/[id]/page.tsx`): content below the Header is wrapped in `<div class="content-shell" style={{ maxWidth: '75vw', margin: '0 auto' }}>`. A `<style>` block overrides this to `95vw` at `≤767px` for mobile.
+- **ProjectHero** has no horizontal padding — its field borders run edge-to-edge within the content-shell, flush with the project-layout section below.
 
 ## Mobile Responsiveness
 
@@ -117,10 +152,7 @@ Mobile breakpoint is **≤767px** throughout. All responsive overrides use inlin
 
 - **Layout**: `app/project/[id]/page.tsx` uses `className="project-layout"` on the flex container. SideNav's `<style>` block sets `flex-direction: column` at ≤767px and toggles `.hidden-mobile` / `.show-mobile` for sidebar vs. pill nav.
 - **Header**: hides date and PRE-PRODUCTION badge on mobile via `.header-date` / `.header-badge` classes in a `<style>` block inside `Header.tsx`.
-- **ProjectHero**: compact padding/font at ≤767px via `.hero-wrap`, `.hero-title`, `.hero-sentence`, `.hero-meta` classes + `!important` overrides (needed because inline styles have higher specificity than class selectors).
-- **ShotRow** (`components/ui/index.tsx`): dual-layout — desktop uses a 6-column grid via `display: contents` wrapper (`.shot-row-dt`); mobile shows a card layout (`.shot-row-mb`) hidden on desktop. Pure CSS, no JS branching.
-- **ShotEditor** (`components/sections/ShotList.tsx`): grid rows `.shot-ed-row1` (4-col) and `.shot-ed-row2` (3-col) collapse to 2-col at ≤767px.
-- **Brief** (`components/sections/Brief.tsx`): edit-mode 2-column grid (`.brief-grid`) collapses to 1-column at ≤767px.
+- **ProjectHero**: compact font at ≤767px via `.hero-wrap`, `.hero-title`, `.hero-sentence` classes + `!important` overrides. Mobile also gets `padding: 20px 16px 8px` (desktop has `0` horizontal padding).
 - **SideNav pills**: auto-scroll active pill into view on mobile via `useEffect` + `scrollIntoView`; tap targets are `10px 16px` padding.
 
 ## AI Generation
@@ -128,6 +160,10 @@ Mobile breakpoint is **≤767px** throughout. All responsive overrides use inlin
 `POST /api/generate` accepts a creative brief (text or extracted PDF/image text) and streams a structured JSON project object back using Claude. The model (`claude-sonnet-5`, 32k max_tokens) is configured in `lib/generate.ts`.
 
 **Thinking blocks**: Sonnet 5 may return `type: 'thinking'` blocks before the text block. Always find the text block with `.find(b => b.type === 'text')` — never assume `content[0]` is text.
+
+**House style doctrine** (in `lib/generate.ts`): no em-dashes as sentence connectors; use "- " bullet lines for 2+ items; sentences under ~25 words; no "Note:" or "Important:" preambles.
+
+**Alert resolution**: `POST /api/alerts/resolve` accepts an alert + project context and returns two resolution suggestions (via `claude-sonnet-5`, 1500 max_tokens). Client helper in `lib/resolveAlert.ts`.
 
 **New project flow**: `app/project/new/page.tsx` calls `saveProject(merged)` immediately after generation (before showing the review step) so the project survives navigation away from the review screen.
 

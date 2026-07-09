@@ -1,7 +1,7 @@
 'use client'
 
 import { Project, PaletteColour } from '@/lib/types'
-import { Eyebrow, InlineField, InlineTextarea, PaletteSwatch, AddButton } from '@/components/ui'
+import { Eyebrow, InlineField, RichTextEditor, PaletteSwatch, AddButton } from '@/components/ui'
 import AlertStrip from './AlertStrip'
 
 interface Props {
@@ -50,7 +50,7 @@ export default function Brief({ project, onChange }: Props) {
               >
                 {f.label}
               </div>
-              <InlineTextarea
+              <RichTextEditor
                 fieldKey={`story.${f.key}`}
                 value={project[f.key] ?? ''}
                 onChange={v => onChange({ [f.key]: v } as Partial<Project>)}
@@ -100,7 +100,7 @@ export default function Brief({ project, onChange }: Props) {
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>
           Campaign Sentence
         </div>
-        <InlineTextarea
+        <RichTextEditor
           fieldKey="brief.campaignSentence"
           value={project.campaignSentence ?? ''}
           onChange={v => onChange({ campaignSentence: v })}
@@ -130,7 +130,7 @@ export default function Brief({ project, onChange }: Props) {
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.08em' }}>Style References</div>
-              <InlineTextarea fieldKey="brief.styleReferences" value={project.styleReferences ?? ''} onChange={v => onChange({ styleReferences: v })} placeholder="—" ariaLabel="Style references" />
+              <RichTextEditor fieldKey="brief.styleReferences" value={project.styleReferences ?? ''} onChange={v => onChange({ styleReferences: v })} placeholder="—" ariaLabel="Style references" />
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function Brief({ project, onChange }: Props) {
                 <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--rust)', marginBottom: 6 }}>
                   {a.severity ?? (a.type === 'red' ? 'urgent' : 'flag')}
                 </div>
-                <InlineTextarea
+                <RichTextEditor
                   fieldKey={`alert.${a.id ?? i}.text`}
                   value={a.text}
                   onChange={v => {

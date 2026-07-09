@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useRef, useEffect, useState, forwardRef, createContext, useContext, useCallback } from 'react'
+import { useEditor, EditorContent, useEditorState } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { Underline as UnderlineExt } from '@tiptap/extension-underline'
 import { Shot, CheckItem } from '@/lib/types'
 
 // ── Eyebrow ──────────────────────────────────────────────────────────────────
@@ -264,6 +267,159 @@ export function InlineTextarea({ fieldKey, value, onChange, placeholder, minRows
       }}
     >
       {value ? (hasBullets ? renderProseBullets(value) : value) : (placeholder || '—')}
+    </div>
+  )
+}
+
+// ── RichTextEditor ────────────────────────────────────────────────────────────
+// Drop-in replacement for InlineTextarea with Tiptap-powered rich text editing.
+// Stores content as HTML; falls back to renderProseBullets() for legacy plain-text display.
+
+interface RichTextEditorProps {
+  fieldKey: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  textStyle?: React.CSSProperties
+  ariaLabel?: string
+}
+
+function RteBtn({
+  active, onMouseDown, title, children, style,
+}: {
+  active: boolean
+  onMouseDown: (e: React.MouseEvent) => void
+  title?: string
+  children: React.ReactNode
+  style?: React.CSSProperties
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={onMouseDown}
+      aria-label={title}
+      aria-pressed={active}
+      title={title}
+      style={{
+        padding: '2px 7px',
+        fontSize: 12, fontWeight: 500,
+        background: active ? 'rgba(200,169,110,0.2)' : 'transparent',
+        border: `1px solid ${active ? 'var(--gold)' : 'transparent'}`,
+        color: active ? 'var(--gold)' : 'var(--text-2)',
+        cursor: 'pointer', lineHeight: '1.5', borderRadius: 2,
+        fontFamily: 'inherit',
+        ...style,
+      }}
+    >{children}</button>
+  )
+}
+
+export function RichTextEditor({ fieldKey, value, onChange, placeholder, textStyle, ariaLabel }: RichTextEditorProps) {
+  const { isEditing, start, stop } = useInlineEdit(fieldKey)
+  const cancelRef = useRef(false)
+  const originalRef = useRef(value)
+
+  const editor = useEditor({
+    extensions: [StarterKit, UnderlineExt],
+    content: value || '',
+    immediatelyRender: false,
+    onBlur: ({ editor: ed }) => {
+      if (cancelRef.current) {
+        cancelRef.current = false
+        queueMicrotask(() => ed.commands.setContent(originalRef.current || '', { emitUpdate: false }))
+        stop()
+        return
+      }
+      const html = ed.isEmpty ? '' : ed.getHTML()
+      onChange(html)
+      stop()
+    },
+  })
+
+  // Sync value from outside (cloud hydration) when not editing
+  useEffect(() => {
+    if (editor && !isEditing) {
+      editor.commands.setContent(value || '', { emitUpdate: false })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  // On edit start: snapshot original, focus editor
+  useEffect(() => {
+    if (isEditing) {
+      originalRef.current = value
+      queueMicrotask(() => editor?.commands.focus('end'))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
+
+  const state = useEditorState({
+    editor,
+    selector: ctx => ({
+      bold:     ctx.editor?.isActive('bold')       ?? false,
+      italic:   ctx.editor?.isActive('italic')     ?? false,
+      underline:ctx.editor?.isActive('underline')  ?? false,
+      bullet:   ctx.editor?.isActive('bulletList') ?? false,
+      ordered:  ctx.editor?.isActive('orderedList') ?? false,
+    }),
+  })
+
+  const isHtml = Boolean(value && value.trimStart().startsWith('<'))
+  const md = (fn: () => void) => (e: React.MouseEvent) => { e.preventDefault(); fn() }
+
+  if (isEditing) {
+    return (
+      <div style={{ border: '1px solid var(--gold)', borderRadius: 3, overflow: 'hidden' }}>
+        {/* Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', background: 'var(--bg4)', borderBottom: '1px solid var(--border-med)' }}>
+          <RteBtn active={!!state?.bold}      onMouseDown={md(() => editor?.chain().focus().toggleBold().run())}        title="Bold"          style={{ fontWeight: 800 }}>B</RteBtn>
+          <RteBtn active={!!state?.italic}    onMouseDown={md(() => editor?.chain().focus().toggleItalic().run())}      title="Italic"        style={{ fontStyle: 'italic' }}>I</RteBtn>
+          <RteBtn active={!!state?.underline} onMouseDown={md(() => editor?.chain().focus().toggleUnderline().run())}   title="Underline"     style={{ textDecoration: 'underline' }}>U</RteBtn>
+          <div style={{ width: 1, height: 14, background: 'var(--border-med)', margin: '0 4px', flexShrink: 0 }} />
+          <RteBtn active={!!state?.bullet}    onMouseDown={md(() => editor?.chain().focus().toggleBulletList().run())}  title="Bullet list">• List</RteBtn>
+          <RteBtn active={!!state?.ordered}   onMouseDown={md(() => editor?.chain().focus().toggleOrderedList().run())} title="Numbered list">1. List</RteBtn>
+        </div>
+        {/* Editor content */}
+        <div
+          aria-label={ariaLabel}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              cancelRef.current = true
+              ;(e.currentTarget.querySelector('[contenteditable]') as HTMLElement)?.blur()
+            }
+          }}
+          style={{ padding: '8px 10px', background: 'var(--input-bg)', ...textStyle }}
+        >
+          <EditorContent editor={editor} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={start}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); start() } }}
+      aria-label={ariaLabel ? `Edit ${ariaLabel}` : 'Edit field'}
+      className="inline-field-display rich-display"
+      style={{
+        fontSize: 14, lineHeight: 1.65,
+        color: value ? 'var(--text)' : 'var(--text-3)',
+        cursor: 'text',
+        borderBottom: '1px dashed transparent',
+        padding: '2px 0',
+        transition: 'border-bottom-color .15s',
+        ...textStyle,
+      }}
+    >
+      {value
+        ? isHtml
+          ? <div dangerouslySetInnerHTML={{ __html: value }} />
+          : (renderProseBullets(value) || value)
+        : (placeholder || '—')}
     </div>
   )
 }

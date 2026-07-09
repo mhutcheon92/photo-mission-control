@@ -1,7 +1,7 @@
 'use client'
 
 import { Project } from '@/lib/types'
-import { InlineField, InlineTextarea } from '@/components/ui'
+import { InlineField, RichTextEditor } from '@/components/ui'
 
 interface Props {
   project: Project
@@ -112,7 +112,7 @@ export default function ProjectHero({ project, onChange }: Props) {
               </span>
               {editable && onChange ? (
                 f.multiline ? (
-                  <InlineTextarea
+                  <RichTextEditor
                     fieldKey={`hero.${String(f.key)}`}
                     value={value}
                     onChange={v => onChange({ [f.key]: v } as Partial<Project>)}

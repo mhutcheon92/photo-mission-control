@@ -1,7 +1,7 @@
 'use client'
 
 import { Project, LightWindow, ScenarioResponse } from '@/lib/types'
-import { Eyebrow, InlineField, InlineTextarea, AddButton } from '@/components/ui'
+import { Eyebrow, InlineField, RichTextEditor, AddButton } from '@/components/ui'
 
 interface Props {
   project: Project
@@ -56,7 +56,7 @@ export default function LightStrategy({ project, onChange }: Props) {
         >
           Light Notes
         </div>
-        <InlineTextarea
+        <RichTextEditor
           fieldKey="light.notes"
           value={project.lightNotes ?? ''}
           onChange={v => onChange({ lightNotes: v })}
@@ -107,7 +107,7 @@ export default function LightStrategy({ project, onChange }: Props) {
                   textStyle={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}
                 />
               </div>
-              <InlineTextarea
+              <RichTextEditor
                 fieldKey={`window.${w.id}.notes`}
                 value={w.notes}
                 onChange={v => updateWindow(w.id, { notes: v })}
@@ -158,7 +158,7 @@ export default function LightStrategy({ project, onChange }: Props) {
                   textStyle={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}
                 />
               </div>
-              <InlineTextarea
+              <RichTextEditor
                 fieldKey={`scenario.${s.id}.notes`}
                 value={s.notes}
                 onChange={v => updateScenario(s.id, { notes: v })}

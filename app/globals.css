@@ -92,3 +92,12 @@ select:focus-visible,
   background: var(--bg4);
   border-radius: 3px;
 }
+
+/* Rich text — display and Tiptap editor */
+.rich-display p, .ProseMirror p { margin: 0 0 6px; }
+.rich-display p:last-child, .ProseMirror p:last-child { margin-bottom: 0; }
+.rich-display ul, .rich-display ol, .ProseMirror ul, .ProseMirror ol { margin: 4px 0; padding-left: 20px; }
+.rich-display ul, .ProseMirror ul { list-style: disc; }
+.rich-display ol, .ProseMirror ol { list-style: decimal; }
+.rich-display li, .ProseMirror li { margin-bottom: 3px; }
+.ProseMirror { outline: none; }

@@ -1,7 +1,7 @@
 'use client'
 
 import { Project, Mission } from '@/lib/types'
-import { Eyebrow, InlineField, InlineTextarea, AddButton, stripMissionPrefix } from '@/components/ui'
+import { Eyebrow, InlineField, RichTextEditor, AddButton, stripMissionPrefix } from '@/components/ui'
 
 interface Props {
   project: Project
@@ -34,7 +34,7 @@ export default function StillsMissions({ project, onChange }: Props) {
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>
           Isolation Notes
         </div>
-        <InlineTextarea
+        <RichTextEditor
           fieldKey="missions.isolationNotes"
           value={project.isolationNotes ?? ''}
           onChange={v => onChange({ isolationNotes: v })}
@@ -79,7 +79,7 @@ export default function StillsMissions({ project, onChange }: Props) {
                   inputStyle={{ fontFamily: 'var(--font-serif, serif)', fontSize: 20 }}
                 />
               </div>
-              <InlineTextarea
+              <RichTextEditor
                 fieldKey={`mission.${m.id}.summary`}
                 value={m.summary}
                 onChange={v => updateMission(m.id, { summary: v })}

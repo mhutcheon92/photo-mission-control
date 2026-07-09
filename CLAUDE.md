@@ -10,7 +10,7 @@ Private single-user web app for commercial photography pre-production planning. 
 - **React 19**, **TypeScript**, **Tailwind CSS v4**
 - **@anthropic-ai/sdk** — AI project generation from creative brief
 - **@vercel/blob** v2.5 — cloud persistence (private store)
-- **pdfjs-dist** — PDF parsing for brief upload
+- **pdf-parse** — server-side PDF text extraction in `api/parse-pdf/route.ts` (no AI call; runs in milliseconds)
 - Deployed on Vercel; subdomain via Cloudflare DNS
 
 ## Auth
@@ -23,7 +23,7 @@ Two-layer: localStorage (fast, local) + Vercel Blob (cloud sync).
 
 - `lib/storage.ts` is the single source of truth for all read/write operations
 - Every write (`saveProject`, `deleteProject`, `duplicateProject`) calls `syncToCloud()` fire-and-forget
-- On dashboard mount, `loadFromCloud()` hydrates from Blob and overwrites localStorage
+- On dashboard mount, `loadFromCloud()` **merges** cloud + local: cloud wins by default, but any locally-newer project (by `updatedAt`) takes precedence. If local-only projects exist (not yet synced), it triggers a `syncToCloud()` to push them up. This prevents newly generated projects from disappearing when returning to the dashboard.
 - Blob store is **private** access — `put()` must use `access: 'private'` and `allowOverwrite: true`; `get()` must use the full URL from `list()` (not the bare pathname), with `{ access: 'private' }`
 - `app/api/projects/route.ts` has `export const dynamic = 'force-dynamic'` to prevent Next.js from caching the internal Blob SDK fetches
 - Storage key: `preproapp_projects`
@@ -68,6 +68,7 @@ app/
   project/new/page.tsx     — New project: scratch or AI-generated from brief
   api/auth/route.ts        — Sets/clears portal_auth cookie
   api/generate/route.ts    — Streams Claude response to populate project from brief
+  api/parse-pdf/route.ts   — Extracts text from uploaded PDF using pdf-parse (no AI)
   api/projects/route.ts    — GET/POST cloud sync via Vercel Blob
 
 components/
@@ -112,13 +113,23 @@ Do **not** add `@media` blocks to `globals.css` expecting them to override compo
 
 ## Mobile Responsiveness
 
-The project layout (`app/project/[id]/page.tsx`) uses `className="project-layout"` on the flex container. SideNav's inline `<style>` block sets `flex-direction: column` on `.project-layout` at ≤767px, and shows/hides the desktop sidebar vs. mobile pill nav via `.hidden-mobile` / `.show-mobile` classes.
+Mobile breakpoint is **≤767px** throughout. All responsive overrides use inline `<style>` blocks inside components (same pattern as `SideNav.tsx`) — never `@media` in `globals.css`.
 
-Header hides date and PRE-PRODUCTION badge on mobile via `.header-date` / `.header-badge` classes defined in a `<style>` block inside `Header.tsx`.
+- **Layout**: `app/project/[id]/page.tsx` uses `className="project-layout"` on the flex container. SideNav's `<style>` block sets `flex-direction: column` at ≤767px and toggles `.hidden-mobile` / `.show-mobile` for sidebar vs. pill nav.
+- **Header**: hides date and PRE-PRODUCTION badge on mobile via `.header-date` / `.header-badge` classes in a `<style>` block inside `Header.tsx`.
+- **ProjectHero**: compact padding/font at ≤767px via `.hero-wrap`, `.hero-title`, `.hero-sentence`, `.hero-meta` classes + `!important` overrides (needed because inline styles have higher specificity than class selectors).
+- **ShotRow** (`components/ui/index.tsx`): dual-layout — desktop uses a 6-column grid via `display: contents` wrapper (`.shot-row-dt`); mobile shows a card layout (`.shot-row-mb`) hidden on desktop. Pure CSS, no JS branching.
+- **ShotEditor** (`components/sections/ShotList.tsx`): grid rows `.shot-ed-row1` (4-col) and `.shot-ed-row2` (3-col) collapse to 2-col at ≤767px.
+- **Brief** (`components/sections/Brief.tsx`): edit-mode 2-column grid (`.brief-grid`) collapses to 1-column at ≤767px.
+- **SideNav pills**: auto-scroll active pill into view on mobile via `useEffect` + `scrollIntoView`; tap targets are `10px 16px` padding.
 
 ## AI Generation
 
-`POST /api/generate` accepts a creative brief (text or extracted PDF/image text) and streams a structured JSON project object back using Claude. The model is configured in `lib/generate.ts`. New projects created via "Generate from brief" flow hit this endpoint.
+`POST /api/generate` accepts a creative brief (text or extracted PDF/image text) and streams a structured JSON project object back using Claude. The model (`claude-sonnet-5`, 32k max_tokens) is configured in `lib/generate.ts`.
+
+**Thinking blocks**: Sonnet 5 may return `type: 'thinking'` blocks before the text block. Always find the text block with `.find(b => b.type === 'text')` — never assume `content[0]` is text.
+
+**New project flow**: `app/project/new/page.tsx` calls `saveProject(merged)` immediately after generation (before showing the review step) so the project survives navigation away from the review screen.
 
 ## Dev Server
 

@@ -4,9 +4,19 @@ export interface PaletteColour {
   meaning: string
 }
 
+export type AlertStatus = 'open' | 'drafting' | 'resolved'
+
 export interface Alert {
+  id?: string
   type: 'red' | 'amber' | 'blue' | 'green'
   text: string
+  severity?: 'urgent' | 'flag'
+  owner?: string
+  status?: AlertStatus
+  resolutionText?: string
+  draftText?: string
+  draftIndex?: number
+  suggestions?: string[]
 }
 
 export interface Mission {

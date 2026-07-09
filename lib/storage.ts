@@ -1,6 +1,23 @@
-import { Project, Mission } from './types'
+import { Project, Mission, Alert } from './types'
 
 const STORAGE_KEY = 'preproapp_projects'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateAlerts(rawAlerts: any): Alert[] {
+  if (!Array.isArray(rawAlerts)) return []
+  return rawAlerts.map((a): Alert => ({
+    id: a.id ?? (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `alert-${Math.random().toString(36).slice(2)}`),
+    type: a.type ?? 'amber',
+    text: a.text ?? '',
+    severity: a.severity ?? (a.type === 'red' ? 'urgent' : 'flag'),
+    owner: a.owner ?? '',
+    status: a.status ?? 'open',
+    resolutionText: a.resolutionText ?? '',
+    draftText: a.draftText ?? '',
+    draftIndex: a.draftIndex ?? 0,
+    suggestions: Array.isArray(a.suggestions) ? a.suggestions : [],
+  }))
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateProject(raw: any): Project {
@@ -25,6 +42,7 @@ function migrateProject(raw: any): Project {
     tone: raw.tone ?? '',
     styleReferences: raw.styleReferences ?? '',
     missions: raw.missions ?? [],
+    alerts: migrateAlerts(raw.alerts),
     shareToken: raw.shareToken ?? null,
     sharedSections: raw.sharedSections ?? [],
   }

@@ -9,6 +9,7 @@ import Header from '@/components/layout/Header'
 import ProjectHero from '@/components/layout/ProjectHero'
 import SideNav from '@/components/layout/SideNav'
 import ShareModal from '@/components/ShareModal'
+import { InlineEditProvider } from '@/components/ui'
 import Brief from '@/components/sections/Brief'
 import StillsMissions from '@/components/sections/StillsMissions'
 import ShotList from '@/components/sections/ShotList'
@@ -92,7 +93,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: 'var(--text-2)', marginBottom: 16 }}>Project not found.</p>
-          <button onClick={() => router.push('/')} style={{ background: 'var(--red)', border: 'none', borderRadius: 8, color: '#fff', padding: '10px 20px', cursor: 'pointer' }}>
+          <button onClick={() => router.push('/')} style={{ background: 'var(--gold)', border: 'none', color: 'var(--gold-on)', padding: '10px 20px', cursor: 'pointer', fontWeight: 600 }}>
             Back to dashboard
           </button>
         </div>
@@ -121,37 +122,39 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <Header
-        campaignName={project.campaignName}
-        shootDate={project.shootDate}
-        onExportHTML={handleExportHTML}
-        onExportMarkdown={handleExportMarkdown}
-        onShare={() => setShowShare(true)}
-      />
-      <ProjectHero project={project} />
-
-      {!hydrated && (
-        <div style={{ height: 2, background: 'var(--bg3)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', inset: '0', background: 'var(--accent)', animation: 'slide 1.2s ease-in-out infinite' }} />
-          <style>{`@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
-        </div>
-      )}
-
-      <div className="project-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <SideNav active={activeSection} onSelect={setActiveSection} />
-        <main style={{ flex: 1, padding: 'clamp(20px, 4vw, 40px) clamp(16px, 5vw, 48px)', minWidth: 0, maxWidth: '100%' }}>
-          {sections[activeSection]}
-        </main>
-      </div>
-
-      {showShare && (
-        <ShareModal
-          project={project}
-          onChange={handleChange}
-          onClose={() => setShowShare(false)}
+    <InlineEditProvider>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+        <Header
+          campaignName={project.campaignName}
+          shootDate={project.shootDate}
+          onExportHTML={handleExportHTML}
+          onExportMarkdown={handleExportMarkdown}
+          onShare={() => setShowShare(true)}
         />
-      )}
-    </div>
+        <ProjectHero project={project} onChange={handleChange} />
+
+        {!hydrated && (
+          <div style={{ height: 2, background: 'var(--bg3)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: '0', background: 'var(--gold)', animation: 'slide 1.2s ease-in-out infinite' }} />
+            <style>{`@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
+          </div>
+        )}
+
+        <div className="project-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <SideNav active={activeSection} onSelect={setActiveSection} />
+          <main style={{ flex: 1, padding: 'clamp(24px, 4vw, 40px) clamp(16px, 5vw, 48px)', minWidth: 0, maxWidth: '100%' }}>
+            {sections[activeSection]}
+          </main>
+        </div>
+
+        {showShare && (
+          <ShareModal
+            project={project}
+            onChange={handleChange}
+            onClose={() => setShowShare(false)}
+          />
+        )}
+      </div>
+    </InlineEditProvider>
   )
 }

@@ -186,6 +186,22 @@ The light strategy test applies to all project types, with one variation for ind
 The strong output for this framework reads like a decision made by a senior photographer who has run this shoot before. It is specific, it is opinionated, it resolves the ambiguities in the brief rather than inheriting them, and it gives the photographer something they can act on immediately. The weak output hedges, describes instead of prescribes, and leaves the photographer to make the creative decisions that the framework should have already made for them.`
 
 const JSON_OUTPUT_SCHEMA = `
+## House style — applies to every prose string field you write
+
+These rules govern how text is written INSIDE string fields (deliverable, character, location, event, revealImage, isolationNotes, mission.summary, shot.notes, lightNotes, alerts.text, checklist items, open items, workflow.notes, scenarioResponses.notes, competitors.borrow / difference, rentalRecommendations.rationale, etc.). They do NOT change the JSON shape — the field type stays "string" — they only change what goes inside the string.
+
+1. Do not use em-dashes ("—") or en-dashes ("–") as sentence connectors. Use a full stop and start a new sentence, or use a colon if you are introducing a list, or use parentheses for a short aside. Numeric ranges keep the en-dash ("25–35 stills") — that is the only allowed use.
+
+2. When a field describes more than one item, output a bullet list, not a run-on sentence. Write bullets as lines beginning with "- " (dash, single space). One item per line. Put a colon and a newline before the first bullet if the field has an intro clause. Example of a good deliverable field value: "25–35 fully edited stills\\n- Full use rights in perpetuity per signed Photo SOW\\n- 3 photographer days: 2 travel, 1 production\\n- Contracted at $4,264.70\\n- Reverse-engineered brief suggests 20–140 images; this does not govern and is flagged as an open item". Do not write it as one sentence glued together with commas, em-dashes, and semicolons.
+
+3. Threshold for bulleting: two or more distinct items, sub-clauses, or caveats in a single field. One-item fields stay as a single short sentence.
+
+4. Keep sentences short. If you catch yourself writing a sentence longer than roughly 25 words with multiple clauses joined by dashes or semicolons, break it apart. Multiple short sentences beat one long compound.
+
+5. Bullets are short — a phrase or one sentence each. If a bullet grows past two lines of prose, it should probably be its own field or a nested item in an array field. Do not use nested bullets (no indented sub-bullets).
+
+6. Do not write "Note:" or "Important:" preambles inside string fields. State the point directly. If a caveat needs to be surfaced, put it in the alerts array with a severity, not buried inside another field.
+
 Return ONLY a valid JSON object matching this TypeScript interface. No preamble, no markdown, no explanation. JSON only.
 
 Shot types: E=Establishing (wide, environment prominent), T=Talent (character in motion within the world), C=Close-up (cutaway/detail — assign to earliest time window), R=Reveal (emotional or narrative payoff of a scene or setup).
@@ -204,9 +220,15 @@ TypeScript interface reference:
   campaignSentence: string, character: string, location: string, event: string,
   revealImage: string, themeWord: string,
   colourPalette: [{hex: string, label: string, meaning: string}],
-  alerts: [{type: "red"|"amber"|"blue"|"green", text: string}],
+  alerts: [{type: "red"|"amber"|"blue"|"green", severity: "urgent"|"flag", owner: string, text: string}],
   isolationNotes: string,
   missions: [{id: string, name: string, summary: string}],
+  // Mission naming rule: the "name" field must contain ONLY the mission's own title
+  // (e.g. "Designed Graphic Unit: 'Full Circle'"). Do NOT include a "Mission N —" prefix
+  // in the name — the display layer prepends "Mission 1 — ", "Mission 2 — " etc. from the array index.
+  // Alert rule: severity "urgent" for scheduling conflicts, blocking gaps, out-of-office flags,
+  // hard constraint violations. severity "flag" for softer contradictions or open questions.
+  // owner is the name of the person responsible for resolving the alert (blank if unknown).
   shots: [{id: string, mission: string, code: string, type: "E"|"T"|"C"|"R",
     name: string, notes: string, lens: string, settings: string, scriptRef: string,
     priority: "Hero"|"High"|"Med"}],

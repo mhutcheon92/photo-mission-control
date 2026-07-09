@@ -22,7 +22,6 @@ interface SideNavProps {
 }
 
 export default function SideNav({ active, onSelect }: SideNavProps) {
-  // Scroll active pill into view on mobile when section changes
   useEffect(() => {
     const btn = document.querySelector<HTMLElement>(`[data-nav-id="${active}"]`)
     btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
@@ -31,67 +30,101 @@ export default function SideNav({ active, onSelect }: SideNavProps) {
   return (
     <>
       {/* Desktop side nav */}
-      <nav style={{
-        width: 200, flexShrink: 0, position: 'sticky', top: 52,
-        height: 'calc(100vh - 52px)', overflowY: 'auto',
-        borderRight: '1px solid var(--border)',
-        padding: '24px 0',
-      }} className="hidden-mobile">
+      <nav
+        className="hidden-mobile"
+        style={{
+          width: 220, flexShrink: 0, position: 'sticky', top: 56,
+          height: 'calc(100vh - 56px)', overflowY: 'auto',
+          borderRight: '1px solid rgba(74,66,60,0.6)',
+          padding: '24px 0',
+        }}
+      >
         {NAV_ITEMS.map(item => {
           const isActive = active === item.id
           return (
             <button
               key={item.id}
               onClick={() => onSelect(item.id)}
+              aria-current={isActive ? 'page' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '8px 20px',
-                background: isActive ? 'var(--red-light)' : 'none',
+                width: '100%', padding: '9px 20px',
+                background: isActive ? 'var(--accent-light)' : 'none',
                 border: 'none', cursor: 'pointer',
-                color: isActive ? 'var(--text)' : 'var(--text-2)',
+                color: isActive ? 'var(--gold)' : 'var(--text-2)',
                 fontSize: 13, textAlign: 'left',
-                transition: 'background .15s',
+                fontFamily: 'inherit',
+                transition: 'background .15s, color .15s',
               }}
             >
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                background: isActive ? 'var(--red)' : 'transparent',
-                border: isActive ? 'none' : '1px solid var(--text-3)',
-              }} />
+              <span
+                aria-hidden
+                style={{
+                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                  background: isActive ? 'var(--gold)' : 'transparent',
+                  border: isActive ? 'none' : '1px solid var(--text-3)',
+                }}
+              />
               {item.label}
             </button>
           )
         })}
       </nav>
 
-      {/* Mobile horizontal nav */}
-      <nav style={{
-        display: 'flex', overflowX: 'auto', gap: 6,
-        padding: '10px 16px', borderBottom: '1px solid var(--border)',
-        scrollbarWidth: 'none',
-      }} className="show-mobile">
-        {NAV_ITEMS.map(item => {
-          const isActive = active === item.id
-          return (
-            <button
-              key={item.id}
-              data-nav-id={item.id}
-              onClick={() => onSelect(item.id)}
-              style={{
-                padding: '10px 16px', borderRadius: 20, flexShrink: 0,
-                background: isActive ? 'var(--red-light)' : 'var(--bg3)',
-                border: `1px solid ${isActive ? 'rgba(200,169,110,0.4)' : 'var(--border)'}`,
-                color: isActive ? 'var(--accent)' : 'var(--text-2)',
-                fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
-            >
-              {item.label}
-            </button>
-          )
-        })}
-      </nav>
+      {/* Mobile horizontal nav — pill row with fade affordance */}
+      <div className="show-mobile mobile-nav-wrap" style={{ position: 'relative', width: '100%' }}>
+        <nav
+          className="mobile-nav-scroll"
+          style={{
+            display: 'flex', overflowX: 'auto', gap: 6,
+            padding: '10px 16px', borderBottom: '1px solid rgba(74,66,60,0.6)',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {NAV_ITEMS.map(item => {
+            const isActive = active === item.id
+            return (
+              <button
+                key={item.id}
+                data-nav-id={item.id}
+                onClick={() => onSelect(item.id)}
+                aria-current={isActive ? 'page' : undefined}
+                style={{
+                  padding: '10px 16px', flexShrink: 0,
+                  background: isActive ? 'var(--accent-light)' : 'var(--surface)',
+                  border: `1px solid ${isActive ? 'rgba(200,169,110,0.5)' : 'var(--border)'}`,
+                  color: isActive ? 'var(--gold)' : 'var(--text-2)',
+                  fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </nav>
+        <div
+          aria-hidden
+          className="mobile-nav-fade-left"
+          style={{
+            position: 'absolute', top: 0, bottom: 0, left: 0, width: 24,
+            background: 'linear-gradient(to right, var(--bg), transparent)',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          aria-hidden
+          className="mobile-nav-fade-right"
+          style={{
+            position: 'absolute', top: 0, bottom: 0, right: 0, width: 24,
+            background: 'linear-gradient(to left, var(--bg), transparent)',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
 
       <style>{`
+        .mobile-nav-scroll::-webkit-scrollbar { display: none; }
         @media (min-width: 768px) {
           .hidden-mobile { display: block !important; }
           .show-mobile { display: none !important; }
@@ -100,7 +133,7 @@ export default function SideNav({ active, onSelect }: SideNavProps) {
           .hidden-mobile { display: none !important; }
           .show-mobile { display: flex !important; }
           .project-layout { flex-direction: column !important; }
-          .project-layout .show-mobile { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+          .project-layout .show-mobile { width: 100%; border-right: none; }
         }
       `}</style>
     </>

@@ -118,11 +118,11 @@ export default function Dashboard() {
 
           <div style={{ position: 'relative' }}>
             <button onClick={() => setShowNewMenu(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, background: 'var(--red)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 22px', background: 'var(--gold)', border: 'none', color: 'var(--gold-on)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               + New Project ▾
             </button>
             {showNewMenu && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--bg3)', border: '1px solid var(--border-med)', borderRadius: 8, overflow: 'hidden', minWidth: 220, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border-med)', overflow: 'hidden', minWidth: 'min(240px, calc(100vw - 32px))', zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                 <Link href="/project/new?mode=scratch" onClick={() => setShowNewMenu(false)}
                   style={{ display: 'block', padding: '12px 18px', color: 'var(--text)', textDecoration: 'none', fontSize: 14 }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg4)')}
@@ -145,22 +145,22 @@ export default function Dashboard() {
 
         {/* ── Projects ─────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: 36 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(74,66,60,0.6)' }}>
             Projects
           </div>
 
           {projects.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 'clamp(40px, 8vw, 80px) clamp(20px, 5vw, 40px)', border: '1px dashed var(--border-med)', borderRadius: 12 }}>
+            <div style={{ textAlign: 'center', padding: 'clamp(40px, 8vw, 80px) clamp(20px, 5vw, 40px)', border: '1px dashed var(--border-med)' }}>
               <div style={{ fontSize: 40, marginBottom: 16 }}>📷</div>
-              <h2 style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 24, marginBottom: 12 }}>No projects yet</h2>
+              <h2 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 24, marginBottom: 12 }}>No projects yet</h2>
               <p style={{ color: 'var(--text-2)', marginBottom: 28, fontSize: 14 }}>Create your first pre-production plan to get started.</p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/project/new?mode=scratch"
-                  style={{ padding: '10px 20px', background: 'var(--bg3)', border: '1px solid var(--border-med)', borderRadius: 8, color: 'var(--text)', textDecoration: 'none', fontSize: 14 }}>
+                  style={{ padding: '10px 20px', background: 'var(--surface)', border: '1px solid var(--border-med)', color: 'var(--text)', textDecoration: 'none', fontSize: 14 }}>
                   Start from scratch
                 </Link>
                 <Link href="/project/new?mode=brief"
-                  style={{ padding: '10px 20px', background: 'var(--red)', border: 'none', borderRadius: 8, color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+                  style={{ padding: '10px 20px', background: 'var(--gold)', border: 'none', color: 'var(--gold-on)', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
                   Generate from brief
                 </Link>
               </div>
@@ -171,21 +171,21 @@ export default function Dashboard() {
                 const progress = calcChecklistProgress(project)
                 const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
                 return (
-                  <div key={project.id} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', transition: 'border-color .15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-med)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                  <div key={project.id} style={{ background: 'var(--surface)', border: '1px solid rgba(74,66,60,0.6)', overflow: 'hidden', transition: 'border-color .15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--gold)')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(74,66,60,0.6)')}>
                     <Link href={`/project/${project.id}`} style={{ display: 'block', padding: '20px 20px 16px', textDecoration: 'none' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold)' }}>
                           {project.clientName || 'Client TBD'}
                         </div>
                         {project.projectType && (
-                          <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: 'var(--bg3)', color: 'var(--text-3)', border: '1px solid var(--border)' }}>
+                          <span style={{ fontSize: 10, padding: '1px 7px', background: 'var(--bg3)', color: 'var(--text-3)', border: '1px solid var(--border)' }}>
                             {PROJECT_TYPE_LABELS[project.projectType] ?? project.projectType}
                           </span>
                         )}
                       </div>
-                      <h2 style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 20, color: 'var(--text)', marginBottom: 10, lineHeight: 1.2 }}>
+                      <h2 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 20, color: 'var(--text)', marginBottom: 10, lineHeight: 1.2 }}>
                         {project.campaignName || 'Untitled'}
                       </h2>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12, color: 'var(--text-3)', marginBottom: 14 }}>
@@ -200,29 +200,29 @@ export default function Dashboard() {
                       )}
                     </Link>
 
-                    <div style={{ display: 'flex', borderTop: '1px solid var(--border)', padding: '10px 12px', gap: 6 }}>
+                    <div style={{ display: 'flex', borderTop: '1px solid rgba(74,66,60,0.6)', padding: '10px 12px', gap: 6 }}>
                       <Link href={`/project/${project.id}`}
-                        style={{ flex: 1, textAlign: 'center', padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', borderRadius: 6, textDecoration: 'none', border: '1px solid var(--border)' }}>
+                        style={{ flex: 1, textAlign: 'center', padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', textDecoration: 'none', border: '1px solid var(--border)' }}>
                         Open
                       </Link>
                       <button onClick={() => handleDuplicate(project.id)}
-                        style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                        style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         Duplicate
                       </button>
                       {deleteConfirm === project.id ? (
                         <>
                           <button onClick={() => handleDelete(project.id)}
-                            style={{ flex: 1, padding: '6px', fontSize: 12, color: '#fff', background: 'var(--danger)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+                            style={{ flex: 1, padding: '6px', fontSize: 12, color: '#fff', background: 'var(--danger)', border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                             Confirm
                           </button>
                           <button onClick={() => setDeleteConfirm(null)}
-                            style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                            style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-2)', background: 'var(--bg3)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}>
                             Cancel
                           </button>
                         </>
                       ) : (
                         <button onClick={() => setDeleteConfirm(project.id)}
-                          style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-3)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                          style={{ flex: 1, padding: '6px', fontSize: 12, color: 'var(--text-3)', background: 'var(--bg3)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}>
                           Delete
                         </button>
                       )}
@@ -286,7 +286,7 @@ export default function Dashboard() {
                   <input value={newGearNotes} onChange={e => setNewGearNotes(e.target.value)} placeholder="Notes (optional, e.g. 24-70mm)" style={{ ...inputStyle, marginBottom: 12 }} />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={handleAddGear}
-                      style={{ padding: '8px 20px', background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#111', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      style={{ padding: '8px 20px', background: 'var(--gold)', border: 'none', color: 'var(--gold-on)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                       Add
                     </button>
                     <button onClick={() => setAddingGear(false)}

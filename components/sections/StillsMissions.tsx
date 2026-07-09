@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Project, Mission } from '@/lib/types'
-import { SectionHeader, Card, EditField, AddButton, MISSION_PALETTE } from '@/components/ui'
+import { Eyebrow, InlineField, InlineTextarea, AddButton, stripMissionPrefix } from '@/components/ui'
 
 interface Props {
   project: Project
@@ -10,13 +9,12 @@ interface Props {
 }
 
 export default function StillsMissions({ project, onChange }: Props) {
-  const [editing, setEditing] = useState(false)
   const missions: Mission[] = project.missions ?? []
 
   const addMission = () => {
     const m: Mission = {
       id: crypto.randomUUID(),
-      name: `Mission ${missions.length + 1}`,
+      name: '',
       summary: '',
     }
     onChange({ missions: [...missions, m] })
@@ -30,68 +28,83 @@ export default function StillsMissions({ project, onChange }: Props) {
 
   return (
     <section>
-      <SectionHeader eyebrow="Missions Strategy" title="Stills Missions" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
+      <Eyebrow>Missions Strategy</Eyebrow>
 
-      <EditField
-        label="Isolation Notes"
-        value={project.isolationNotes ?? ''}
-        onChange={v => onChange({ isolationNotes: v })}
-        multiline
-      />
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+          Isolation Notes
+        </div>
+        <InlineTextarea
+          fieldKey="missions.isolationNotes"
+          value={project.isolationNotes ?? ''}
+          onChange={v => onChange({ isolationNotes: v })}
+          placeholder="Add isolation notes…"
+          ariaLabel="Isolation notes"
+        />
+      </div>
 
-      {editing ? (
-        <div>
-          {missions.map((m, i) => {
-            const color = MISSION_PALETTE[i % MISSION_PALETTE.length]
-            return (
-              <div key={m.id} style={{ background: 'var(--bg3)', border: `1px solid ${color}4D`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-                  <div style={{ fontSize: 11, color, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600, flexShrink: 0 }}>
-                    Mission {i + 1}
-                  </div>
-                  <input
-                    value={m.name}
-                    onChange={e => updateMission(m.id, { name: e.target.value })}
-                    placeholder="Mission name"
-                    style={{ flex: 1, background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '6px 10px', fontSize: 13 }}
-                  />
-                  {missions.length > 1 && (
-                    <button
-                      onClick={() => deleteMission(m.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0 }}
-                    >×</button>
-                  )}
-                </div>
-                <textarea
-                  value={m.summary}
-                  onChange={e => updateMission(m.id, { summary: e.target.value })}
-                  placeholder="Describe the visual intent, approach, and key shots for this mission..."
-                  rows={3}
-                  style={{ width: '100%', background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '8px 10px', fontSize: 13, resize: 'vertical' }}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+        {missions.length === 0 && (
+          <p style={{ color: 'var(--text-3)', fontSize: 14 }}>No missions defined yet.</p>
+        )}
+        {missions.map((m, i) => {
+          const cleanName = stripMissionPrefix(m.name)
+          return (
+            <div
+              key={m.id}
+              style={{
+                position: 'relative',
+                padding: '20px 22px',
+                background: 'var(--surface)',
+                border: '1px solid rgba(74,66,60,0.6)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--font-serif, serif)',
+                  fontWeight: 500,
+                  fontSize: 20,
+                  marginBottom: 10,
+                  color: 'var(--text)',
+                }}
+              >
+                Mission {i + 1} —{' '}
+                <InlineField
+                  fieldKey={`mission.${m.id}.name`}
+                  value={cleanName}
+                  onChange={v => updateMission(m.id, { name: stripMissionPrefix(v) })}
+                  placeholder="Mission title…"
+                  ariaLabel={`Mission ${i + 1} name`}
+                  textStyle={{ fontFamily: 'var(--font-serif, serif)', fontSize: 20, color: 'var(--text)' }}
+                  inputStyle={{ fontFamily: 'var(--font-serif, serif)', fontSize: 20 }}
                 />
               </div>
-            )
-          })}
-          <AddButton onClick={addMission} label="Add Mission" />
-        </div>
-      ) : (
-        <div>
-          {missions.length === 0 && (
-            <p style={{ color: 'var(--text-3)', fontSize: 14 }}>No missions defined. Toggle edit to add missions.</p>
-          )}
-          {missions.map((m, i) => {
-            const color = MISSION_PALETTE[i % MISSION_PALETTE.length]
-            return (
-              <Card key={m.id} style={{ borderLeft: `3px solid ${color}`, marginBottom: 12 }}>
-                <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color, marginBottom: 8 }}>
-                  {/^mission\s+\d+/i.test(m.name) ? m.name : `Mission ${i + 1} — ${m.name}`}
-                </div>
-                <p style={{ fontSize: 14, color: 'var(--text-2)' }}>{m.summary || '—'}</p>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+              <InlineTextarea
+                fieldKey={`mission.${m.id}.summary`}
+                value={m.summary}
+                onChange={v => updateMission(m.id, { summary: v })}
+                placeholder="Describe the visual intent, approach, and key shots for this mission…"
+                textStyle={{ fontSize: 13.5, color: 'var(--text-2)', lineHeight: 1.65 }}
+                ariaLabel={`Mission ${i + 1} summary`}
+              />
+              {missions.length > 1 && (
+                <button
+                  onClick={() => deleteMission(m.id)}
+                  aria-label={`Delete Mission ${i + 1}`}
+                  style={{
+                    position: 'absolute', top: 12, right: 12,
+                    background: 'none', border: 'none',
+                    color: 'var(--text-3)', cursor: 'pointer',
+                    fontSize: 18, padding: '0 4px', lineHeight: 1,
+                  }}
+                >×</button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <AddButton onClick={addMission} label="Add Mission" />
     </section>
   )
 }

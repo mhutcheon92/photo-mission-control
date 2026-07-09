@@ -1,7 +1,272 @@
 'use client'
 
-import React, { useRef, useEffect, forwardRef } from 'react'
+import React, { useRef, useEffect, useState, forwardRef, createContext, useContext, useCallback } from 'react'
 import { Shot, CheckItem } from '@/lib/types'
+
+// ── Eyebrow ──────────────────────────────────────────────────────────────────
+export const EYEBROW_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  letterSpacing: '.14em',
+  textTransform: 'uppercase',
+  color: 'var(--gold)',
+  fontWeight: 500,
+}
+
+export function Eyebrow({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ ...EYEBROW_STYLE, marginBottom: 12, ...style }}>{children}</div>
+}
+
+// ── Shot code definitions ────────────────────────────────────────────────────
+export const SHOT_CODE_LABELS: Record<string, { label: string; title: string }> = {
+  C: { label: 'Cutaway', title: 'Cutaway — supporting detail or environmental frame' },
+  E: { label: 'Establishing', title: 'Establishing — wide, scene-setting' },
+  T: { label: 'Transition', title: 'Transition — movement or bridging moment between beats' },
+  R: { label: 'Reveal', title: 'Reveal — the hero payoff frame' },
+}
+
+// ── Mission title helper ─────────────────────────────────────────────────────
+export function stripMissionPrefix(name: string): string {
+  return (name ?? '').replace(/^\s*mission\s+\d+\s*[—–\-:]\s*/i, '').trim()
+}
+
+// ── Prose-with-bullets renderer ──────────────────────────────────────────────
+// Parses text where some lines begin with "- " or "* " into a mixed
+// paragraph/list block. Non-bullet lines render as paragraphs; consecutive
+// bullet lines group into a single <ul>. The raw text is preserved for editing
+// (this only affects display mode).
+export function renderProseBullets(text: string): React.ReactNode {
+  if (!text) return null
+  const lines = text.split('\n')
+  const blocks: React.ReactNode[] = []
+  let buffer: string[] = []
+  let mode: 'para' | 'list' | null = null
+
+  const flush = () => {
+    if (buffer.length === 0) return
+    if (mode === 'list') {
+      blocks.push(
+        <ul key={blocks.length} style={{ margin: '4px 0', paddingLeft: 20, listStyle: 'disc' }}>
+          {buffer.map((item, i) => (
+            <li key={i} style={{ marginBottom: 4 }}>{item}</li>
+          ))}
+        </ul>
+      )
+    } else {
+      blocks.push(
+        <p key={blocks.length} style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>
+          {buffer.join('\n')}
+        </p>
+      )
+    }
+    buffer = []
+  }
+
+  for (const raw of lines) {
+    const line = raw.trimEnd()
+    const bulletMatch = line.match(/^\s*[-*]\s+(.*)$/)
+    if (bulletMatch) {
+      if (mode !== 'list') { flush(); mode = 'list' }
+      buffer.push(bulletMatch[1])
+    } else if (line.trim() === '') {
+      flush()
+      mode = null
+    } else {
+      if (mode !== 'para') { flush(); mode = 'para' }
+      buffer.push(line)
+    }
+  }
+  flush()
+  return <>{blocks}</>
+}
+
+// ── InlineEdit context ───────────────────────────────────────────────────────
+interface InlineEditCtx {
+  editingKey: string | null
+  setEditingKey: (key: string | null) => void
+}
+const InlineEditContext = createContext<InlineEditCtx>({
+  editingKey: null,
+  setEditingKey: () => {},
+})
+
+export function InlineEditProvider({ children }: { children: React.ReactNode }) {
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  return (
+    <InlineEditContext.Provider value={{ editingKey, setEditingKey }}>
+      {children}
+    </InlineEditContext.Provider>
+  )
+}
+
+function useInlineEdit(fieldKey: string) {
+  const ctx = useContext(InlineEditContext)
+  const isEditing = ctx.editingKey === fieldKey
+  const start = useCallback(() => ctx.setEditingKey(fieldKey), [ctx, fieldKey])
+  const stop = useCallback(() => {
+    if (ctx.editingKey === fieldKey) ctx.setEditingKey(null)
+  }, [ctx, fieldKey])
+  return { isEditing, start, stop }
+}
+
+// ── InlineField ──────────────────────────────────────────────────────────────
+interface InlineFieldProps {
+  fieldKey: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  textStyle?: React.CSSProperties
+  inputStyle?: React.CSSProperties
+  ariaLabel?: string
+}
+export function InlineField({ fieldKey, value, onChange, placeholder, textStyle, inputStyle, ariaLabel }: InlineFieldProps) {
+  const { isEditing, start, stop } = useInlineEdit(fieldKey)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    if (isEditing) {
+      setDraft(value)
+      // focus on next tick so React finishes render
+      queueMicrotask(() => inputRef.current?.focus())
+    }
+  }, [isEditing, value])
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { onChange(draft); stop() }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { onChange(draft); stop() }
+          if (e.key === 'Escape') { setDraft(value); stop() }
+        }}
+        aria-label={ariaLabel}
+        style={{
+          width: '100%',
+          background: 'var(--input-bg)',
+          border: '1px solid var(--gold)',
+          borderRadius: 3,
+          color: 'var(--text)',
+          fontSize: 14,
+          fontFamily: 'inherit',
+          padding: '4px 8px',
+          outline: 'none',
+          boxSizing: 'border-box',
+          ...inputStyle,
+        }}
+      />
+    )
+  }
+
+  const hasBullets = /(^|\n)\s*[-*]\s+/.test(value)
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={start}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); start() } }}
+      aria-label={ariaLabel ? `Edit ${ariaLabel}` : 'Edit field'}
+      className="inline-field-display"
+      style={{
+        fontSize: 14,
+        color: value ? 'var(--text)' : 'var(--text-3)',
+        cursor: 'text',
+        borderBottom: '1px dashed transparent',
+        display: hasBullets ? 'block' : 'inline-block',
+        minWidth: 40,
+        padding: '2px 0',
+        transition: 'border-bottom-color .15s',
+        ...textStyle,
+      }}
+    >
+      {value ? (hasBullets ? renderProseBullets(value) : value) : (placeholder || '—')}
+    </div>
+  )
+}
+
+// ── InlineTextarea ───────────────────────────────────────────────────────────
+interface InlineTextareaProps {
+  fieldKey: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  minRows?: number
+  textStyle?: React.CSSProperties
+  inputStyle?: React.CSSProperties
+  ariaLabel?: string
+}
+export function InlineTextarea({ fieldKey, value, onChange, placeholder, minRows = 2, textStyle, inputStyle, ariaLabel }: InlineTextareaProps) {
+  const { isEditing, start, stop } = useInlineEdit(fieldKey)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    if (isEditing) {
+      setDraft(value)
+      queueMicrotask(() => inputRef.current?.focus())
+    }
+  }, [isEditing, value])
+
+  if (isEditing) {
+    return (
+      <AutoTextarea
+        ref={inputRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { onChange(draft); stop() }}
+        onKeyDown={e => {
+          if (e.key === 'Escape') { setDraft(value); stop() }
+        }}
+        rows={minRows}
+        aria-label={ariaLabel}
+        style={{
+          width: '100%',
+          background: 'var(--input-bg)',
+          border: '1px solid var(--gold)',
+          borderRadius: 3,
+          color: 'var(--text)',
+          fontSize: 14,
+          fontFamily: 'inherit',
+          padding: '6px 8px',
+          outline: 'none',
+          boxSizing: 'border-box',
+          lineHeight: 1.65,
+          ...inputStyle,
+        }}
+      />
+    )
+  }
+
+  const hasBullets = /(^|\n)\s*[-*]\s+/.test(value)
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={start}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); start() } }}
+      aria-label={ariaLabel ? `Edit ${ariaLabel}` : 'Edit field'}
+      className="inline-field-display"
+      style={{
+        fontSize: 14,
+        lineHeight: 1.65,
+        color: value ? 'var(--text)' : 'var(--text-3)',
+        cursor: 'text',
+        borderBottom: '1px dashed transparent',
+        padding: '2px 0',
+        whiteSpace: hasBullets ? 'normal' : 'pre-wrap',
+        transition: 'border-bottom-color .15s',
+        ...textStyle,
+      }}
+    >
+      {value ? (hasBullets ? renderProseBullets(value) : value) : (placeholder || '—')}
+    </div>
+  )
+}
 
 // ── SectionHeader ────────────────────────────────────────────────────────────
 interface SectionHeaderProps {
@@ -13,12 +278,12 @@ interface SectionHeaderProps {
 }
 export function SectionHeader({ eyebrow, title, editing, onToggleEdit, progress }: SectionHeaderProps) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
       <div>
-        <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 4 }}>
+        <div style={{ ...EYEBROW_STYLE, marginBottom: 6 }}>
           {eyebrow}
         </div>
-        <h2 style={{ fontFamily: 'var(--font-serif, DM Serif Display, serif)', fontSize: 'clamp(20px, 5.5vw, 28px)', color: 'var(--text)', lineHeight: 1.2 }}>
+        <h2 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 'clamp(20px, 5vw, 28px)', color: 'var(--text)', lineHeight: 1.2 }}>
           {title}
         </h2>
         {progress && progress.total > 0 && (
@@ -30,18 +295,19 @@ export function SectionHeader({ eyebrow, title, editing, onToggleEdit, progress 
       {onToggleEdit && (
         <button
           onClick={onToggleEdit}
+          aria-label={editing ? 'Finish editing' : 'Edit section'}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            background: editing ? 'var(--red-light)' : 'var(--bg3)',
-            border: `1px solid ${editing ? 'rgba(192,57,43,0.3)' : 'var(--border)'}`,
-            color: editing ? 'var(--red)' : 'var(--text-2)',
+            padding: '6px 12px',
+            background: editing ? 'rgba(200,169,110,0.15)' : 'var(--surface)',
+            border: `1px solid ${editing ? 'var(--gold)' : 'var(--border)'}`,
+            color: editing ? 'var(--gold)' : 'var(--text-2)',
             fontSize: 12, cursor: 'pointer', flexShrink: 0,
           }}
         >
           {editing ? (
             <>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 11l2.5-1 7-7-1.5-1.5-7 7L1 11z" stroke="currentColor" strokeWidth="1.2" fill="none"/></svg>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6l3 3 7-7" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
               Done
             </>
           ) : (
@@ -59,22 +325,26 @@ export function SectionHeader({ eyebrow, title, editing, onToggleEdit, progress 
 // ── Card ─────────────────────────────────────────────────────────────────────
 interface CardProps {
   children: React.ReactNode
-  priority?: 'red' | 'amber' | 'green'
+  priority?: 'red' | 'amber' | 'green' | 'rust' | 'gold'
   style?: React.CSSProperties
   className?: string
 }
 export function Card({ children, priority, style, className }: CardProps) {
-  const borderLeft = priority
-    ? `3px solid ${priority === 'red' ? 'var(--red)' : priority === 'amber' ? 'var(--amber)' : 'var(--green)'}`
-    : undefined
+  const priorityColor: Record<string, string> = {
+    red: 'var(--danger)',
+    amber: 'var(--amber)',
+    green: 'var(--green)',
+    rust: 'var(--rust)',
+    gold: 'var(--gold)',
+  }
+  const borderLeft = priority ? `2px solid ${priorityColor[priority]}` : undefined
   return (
     <div
       className={className}
       style={{
-        background: 'var(--bg2)',
-        border: '1px solid var(--border)',
-        borderLeft: borderLeft ?? '1px solid var(--border)',
-        borderRadius: 8,
+        background: 'var(--surface)',
+        border: '1px solid rgba(74,66,60,0.6)',
+        borderLeft: borderLeft ?? '1px solid rgba(74,66,60,0.6)',
         padding: 20,
         ...style,
       }}
@@ -84,7 +354,7 @@ export function Card({ children, priority, style, className }: CardProps) {
   )
 }
 
-// ── Alert ─────────────────────────────────────────────────────────────────────
+// ── Alert Banner ─────────────────────────────────────────────────────────────
 const alertColors: Record<string, [string, string]> = {
   red: ['#C0392B', 'rgba(192,57,43,0.12)'],
   amber: ['#D4821A', 'rgba(212,130,26,0.12)'],
@@ -101,7 +371,7 @@ export function AlertBanner({ type, text }: AlertProps) {
     <div style={{
       background: bg, border: `1px solid ${color}40`,
       borderLeft: `3px solid ${color}`,
-      borderRadius: 6, padding: '12px 16px',
+      padding: '12px 16px',
       color, fontSize: 14, marginBottom: 8,
     }}>
       {text}
@@ -111,8 +381,8 @@ export function AlertBanner({ type, text }: AlertProps) {
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
 const badgeColors: Record<string, [string, string]> = {
-  Hero: ['#C0392B', 'rgba(192,57,43,0.15)'],
-  High: ['#D4821A', 'rgba(212,130,26,0.15)'],
+  Hero: ['var(--urgent-fg)', 'var(--urgent-bg)'],
+  High: ['var(--flag-fg)', 'var(--flag-bg)'],
   Med: ['#4A7C3F', 'rgba(74,124,63,0.15)'],
   Info: ['#87AECC', 'rgba(135,174,204,0.15)'],
 }
@@ -121,10 +391,10 @@ export function Badge({ label }: { label: string }) {
   return (
     <span style={{
       fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
-      padding: '2px 8px', borderRadius: 4,
+      padding: '3px 9px',
       background: bg, color,
-      border: `1px solid ${color}40`,
       textTransform: 'uppercase' as const,
+      whiteSpace: 'nowrap',
     }}>
       {label}
     </span>
@@ -132,13 +402,13 @@ export function Badge({ label }: { label: string }) {
 }
 
 // ── MissionBar ────────────────────────────────────────────────────────────────
-const MISSION_PALETTE = ['#87AECC', '#4A7C3F', '#D4821A', '#C0392B', '#A8A49E']
+const MISSION_PALETTE = ['#c8a96e', '#87AECC', '#4A7C3F', '#D4821A', '#C0392B', '#A8A49E']
 
 export function MissionBar({ name, index = 0 }: { name: string; index?: number }) {
   const color = MISSION_PALETTE[index % MISSION_PALETTE.length]
   return (
     <div style={{
-      padding: '10px 16px', borderRadius: 6, marginBottom: 16,
+      padding: '10px 16px', marginBottom: 16,
       background: `${color}1A`,
       border: `1px solid ${color}4D`,
       color,
@@ -152,54 +422,39 @@ export function MissionBar({ name, index = 0 }: { name: string; index?: number }
 export { MISSION_PALETTE }
 
 // ── ShotRow ───────────────────────────────────────────────────────────────────
-const shotTypeColors: Record<string, string> = {
-  E: '#87AECC', T: '#A8A49E', C: '#D4821A', R: '#C0392B',
-}
 export function ShotRow({ shot }: { shot: Shot }) {
   const meta = [shot.lens, shot.settings, shot.scriptRef].filter(Boolean).join(' · ')
+  const codeInfo = SHOT_CODE_LABELS[shot.code] ?? SHOT_CODE_LABELS[shot.type] ?? { label: '', title: '' }
   return (
-    <div className="shot-row">
-      <style>{`
-        .shot-row { display: grid; grid-template-columns: 48px 1fr 100px 120px 80px 64px; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
-        .shot-row-dt { display: contents; }
-        .shot-row-mb { display: none; }
-        @media (max-width: 767px) {
-          .shot-row { display: block; padding: 12px 14px; }
-          .shot-row-dt { display: none; }
-          .shot-row-mb { display: block; }
-        }
-      `}</style>
-
-      {/* Desktop: display:contents makes children direct grid items */}
-      <div className="shot-row-dt">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 32, height: 32, borderRadius: '50%', background: shotTypeColors[shot.type] ?? '#6B6760', color: '#111110', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{shot.type}</span>
-          <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>{shot.code}</span>
-        </div>
-        <div>
-          <div style={{ fontWeight: 600, color: 'var(--text)' }}>{shot.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{shot.notes}</div>
-        </div>
-        <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.lens}</div>
-        <div style={{ color: 'var(--text-2)', fontSize: 12 }}>{shot.settings}</div>
-        <div style={{ color: 'var(--text-3)', fontSize: 11, fontFamily: 'monospace' }}>{shot.scriptRef}</div>
-        <div><Badge label={shot.priority} /></div>
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: '10px 16px', alignItems: 'flex-start',
+      padding: '14px 16px', background: 'var(--surface)',
+      border: '1px solid rgba(74,66,60,0.6)',
+    }}>
+      <span
+        title={codeInfo.title}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11, fontWeight: 600,
+          width: 24, height: 24, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#241f1c', color: 'var(--text)',
+        }}
+      >
+        {shot.code || shot.type}
+      </span>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ fontSize: 13.5, color: 'var(--text)', marginBottom: 4 }}>{shot.name}</div>
+        {shot.notes && <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>{shot.notes}</div>}
+        {meta && (
+          <div style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{meta}</div>
+        )}
       </div>
-
-      {/* Mobile: card layout — type circle + name + priority, notes + meta below */}
-      <div className="shot-row-mb">
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-            <span style={{ width: 30, height: 30, borderRadius: '50%', background: shotTypeColors[shot.type] ?? '#6B6760', color: '#111110', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{shot.type}</span>
-            <span style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: 'monospace' }}>{shot.code}</span>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{shot.name}</div>
-            {shot.notes && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{shot.notes}</div>}
-            {meta && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{meta}</div>}
-          </div>
-          <div style={{ flexShrink: 0 }}><Badge label={shot.priority} /></div>
-        </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        {shot.mission && (
+          <div style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{shot.mission}</div>
+        )}
+        <Badge label={shot.priority} />
       </div>
     </div>
   )
@@ -221,17 +476,18 @@ export function ChecklistItemRow({ item, onToggle, onDelete, onTextChange, editi
     }}>
       <button
         onClick={onToggle}
+        aria-label={item.done ? 'Mark as not done' : 'Mark as done'}
         style={{
           width: 18, height: 18, borderRadius: 3, flexShrink: 0,
-          border: `1px solid ${item.done ? 'var(--green)' : 'var(--border-med)'}`,
-          background: item.done ? 'var(--green)' : 'transparent',
+          border: `1px solid ${item.done ? 'var(--gold)' : 'var(--border-med)'}`,
+          background: item.done ? 'var(--gold)' : 'transparent',
           cursor: onToggle ? 'pointer' : 'default',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
         {item.done && (
           <svg width="10" height="10" viewBox="0 0 10 10">
-            <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="1.5" fill="none" />
+            <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="var(--gold-on)" strokeWidth="1.5" fill="none" />
           </svg>
         )}
       </button>
@@ -255,7 +511,11 @@ export function ChecklistItemRow({ item, onToggle, onDelete, onTextChange, editi
         </span>
       )}
       {editing && onDelete && (
-        <button onClick={onDelete} style={{ color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: 16, lineHeight: 1 }}>×</button>
+        <button
+          onClick={onDelete}
+          aria-label="Delete item"
+          style={{ color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: 16, lineHeight: 1 }}
+        >×</button>
       )}
     </div>
   )
@@ -266,8 +526,8 @@ export function ProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 3, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--red)', borderRadius: 2, transition: 'width .3s' }} />
+      <div style={{ flex: 1, height: 3, background: 'var(--bg4)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gold)', transition: 'width .3s' }} />
       </div>
       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{done}/{total}</span>
     </div>
@@ -283,7 +543,7 @@ interface PaletteSwatchProps {
 export function PaletteSwatch({ hex, label, meaning }: PaletteSwatchProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-      <div style={{ width: 48, height: 48, borderRadius: 6, background: hex, border: '1px solid var(--border)' }} />
+      <div style={{ width: 48, height: 48, background: hex, border: '1px solid var(--border)' }} />
       <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{meaning}</div>
     </div>
@@ -295,7 +555,7 @@ interface AutoTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   value: string
 }
 export const AutoTextarea = forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
-  function AutoTextarea({ value, style, ...props }, ref) {
+  function AutoTextarea({ value, style, onKeyDown, ...props }, ref) {
     const localRef = useRef<HTMLTextAreaElement>(null)
     const resolvedRef = (ref as React.RefObject<HTMLTextAreaElement>) || localRef
 
@@ -306,11 +566,20 @@ export const AutoTextarea = forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
       el.style.height = `${el.scrollHeight}px`
     }, [value, resolvedRef])
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      onKeyDown?.(e)
+      if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
+        e.preventDefault()
+        e.currentTarget.blur()
+      }
+    }
+
     return (
       <textarea
         ref={resolvedRef}
         value={value}
         rows={1}
+        onKeyDown={handleKeyDown}
         style={{
           resize: 'none',
           overflow: 'hidden',
@@ -324,6 +593,7 @@ export const AutoTextarea = forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
 )
 
 // ── EditField ─────────────────────────────────────────────────────────────────
+// Kept for the New Project review screen — labeled input pattern.
 interface EditFieldProps {
   label: string
   value: string
@@ -332,8 +602,8 @@ interface EditFieldProps {
 }
 export function EditField({ label, value, onChange, multiline }: EditFieldProps) {
   const inputStyle: React.CSSProperties = {
-    width: '100%', background: 'var(--bg3)',
-    border: '1px solid var(--border-med)', borderRadius: 6,
+    width: '100%', background: 'var(--input-bg)',
+    border: '1px solid var(--border-med)',
     color: 'var(--text)', fontSize: 14, padding: '8px 12px',
     outline: 'none',
   }
@@ -358,8 +628,8 @@ export function AddButton({ onClick, label }: { onClick: () => void; label: stri
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        padding: '6px 12px', borderRadius: 6,
-        background: 'var(--bg3)', border: '1px dashed var(--border-med)',
+        padding: '6px 12px',
+        background: 'var(--surface)', border: '1px dashed var(--border-med)',
         color: 'var(--text-2)', fontSize: 12, cursor: 'pointer',
         marginTop: 8,
       }}

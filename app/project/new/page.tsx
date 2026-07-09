@@ -58,28 +58,91 @@ const ACCEPTED_TYPES = '.pdf,.txt,.md,.jpg,.jpeg,.png,.gif,.webp'
 function AttachmentChip({ att, onRemove }: { att: Attachment; onRemove: () => void }) {
   const icon = att.type === 'image' ? '🖼' : '📄'
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '5px 10px', borderRadius: 20,
-      background: att.truncated ? 'rgba(212,130,26,0.1)' : 'var(--bg3)',
-      border: `1px solid ${att.truncated ? 'rgba(212,130,26,0.4)' : 'var(--border-med)'}`,
-      fontSize: 12, color: 'var(--text-2)',
-    }} title={att.truncated ? 'File was truncated to fit the context window' : undefined}>
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '5px 10px', borderRadius: 20,
+        background: att.truncated ? 'rgba(212,130,26,0.1)' : 'var(--bg3)',
+        border: `1px solid ${att.truncated ? 'rgba(212,130,26,0.4)' : 'var(--border-med)'}`,
+        fontSize: 12, color: 'var(--text-2)',
+      }}
+      title={att.truncated ? 'Only part of this file was used (large file).' : undefined}
+    >
       <span>{icon}</span>
       <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-      {att.truncated && <span style={{ color: 'var(--amber)', fontSize: 10, fontWeight: 600 }}>truncated</span>}
+      {att.truncated && <span style={{ color: 'var(--amber)', fontSize: 10, fontWeight: 600 }}>partial</span>}
       <span style={{ color: 'var(--text-3)', fontSize: 10 }}>{att.sizeKB}KB</span>
-      <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '0 2px', fontSize: 14, lineHeight: 1 }}>×</button>
+      <button
+        onClick={onRemove}
+        aria-label={`Remove ${att.name}`}
+        style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '0 2px', fontSize: 14, lineHeight: 1 }}
+      >×</button>
     </div>
   )
 }
 
 type Step = 'typeselect' | 'intake' | 'loading' | 'review'
+const STEP_ORDER: Step[] = ['typeselect', 'intake', 'review']
+const STEP_LABELS: Record<Step, string> = {
+  typeselect: 'Type',
+  intake: 'Brief',
+  loading: '',
+  review: 'Review',
+}
+
+function StepIndicator({ current, mode }: { current: Step; mode: 'brief' | 'scratch' }) {
+  // Scratch flow has no Brief step (goes typeselect → review)
+  const steps: Step[] = mode === 'brief' ? STEP_ORDER : ['typeselect', 'review']
+  const currentIdx = steps.indexOf(current)
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        padding: '14px 24px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg)',
+      }}
+    >
+      {steps.map((s, idx) => {
+        const done = idx < currentIdx
+        const active = idx === currentIdx
+        return (
+          <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 600,
+                  background: done ? 'var(--gold)' : active ? 'transparent' : 'transparent',
+                  color: done ? 'var(--gold-on)' : active ? 'var(--gold)' : 'var(--text-3)',
+                  border: `1px solid ${done ? 'var(--gold)' : active ? 'var(--gold)' : 'var(--border-med)'}`,
+                }}
+              >
+                {done ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="var(--gold-on)" strokeWidth="1.5" fill="none" />
+                  </svg>
+                ) : (
+                  idx + 1
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: active ? 'var(--text)' : 'var(--text-3)' }}>{STEP_LABELS[s]}</span>
+            </div>
+            {idx < steps.length - 1 && (
+              <div style={{ width: 24, height: 1, background: 'var(--border-med)' }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function NewProjectContent() {
   const router = useRouter()
   const params = useSearchParams()
-  const mode = params.get('mode') ?? 'scratch'
+  const mode = (params.get('mode') === 'brief' ? 'brief' : 'scratch') as 'brief' | 'scratch'
 
   const [step, setStep] = useState<Step>('typeselect')
   const [projectType, setProjectType] = useState<ProjectType>('commercial')
@@ -92,7 +155,7 @@ function NewProjectContent() {
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
   const [project, setProject] = useState<Project>(emptyProject())
   const [error, setError] = useState('')
-  const [expandedSection, setExpandedSection] = useState<string | null>('details')
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['details']))
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const canGenerate = brief.trim().length > 0 || attachments.length > 0
@@ -183,34 +246,49 @@ function NewProjectContent() {
 
   const typeConfig = PROJECT_TYPES.find(t => t.id === projectType)!
 
+  const toggleSection = (id: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   // ── Type Select ────────────────────────────────────────────────────────────
   if (step === 'typeselect') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
         <Header />
+        <StepIndicator current="typeselect" mode={mode} />
         <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px)' }}>
-          <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 8 }}>New Project</div>
-          <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 'clamp(24px, 5vw, 32px)', marginBottom: 8 }}>What type of shoot?</h1>
+          <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8 }}>New Project</div>
+          <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 'clamp(24px, 5vw, 32px)', marginBottom: 8 }}>What type of shoot?</h1>
           <p style={{ color: 'var(--text-2)', marginBottom: 32, fontSize: 14 }}>
             Selecting a project type applies the right frameworks and resources to the AI generation.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginBottom: 32 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginBottom: 36 }}>
             {PROJECT_TYPES.map(type => {
               const selected = projectType === type.id
               return (
                 <button
                   key={type.id}
                   onClick={() => setProjectType(type.id)}
+                  aria-label={`Select ${type.label} project type`}
+                  aria-pressed={selected}
                   style={{
-                    textAlign: 'left', padding: '18px 20px', borderRadius: 10, cursor: 'pointer',
-                    background: selected ? `${type.color}18` : 'var(--bg2)',
+                    textAlign: 'left', padding: '18px 20px', cursor: 'pointer',
+                    background: selected ? `${type.color}18` : 'var(--surface)',
                     border: `2px solid ${selected ? type.color : 'var(--border)'}`,
                     transition: 'border-color .15s, background .15s',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 15, color: selected ? type.color : 'var(--text)', marginBottom: 4 }}>
-                    {type.label}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: type.color, flexShrink: 0 }} />
+                    <div style={{ fontWeight: 600, fontSize: 15, color: selected ? type.color : 'var(--text)' }}>
+                      {type.label}
+                    </div>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{type.description}</div>
                 </button>
@@ -228,7 +306,13 @@ function NewProjectContent() {
                   setStep('review')
                 }
               }}
-              style={{ padding: '12px 28px', background: 'var(--red)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              style={{
+                padding: '13px 30px',
+                background: 'var(--gold)',
+                border: 'none',
+                color: 'var(--gold-on)',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}
             >
               {mode === 'brief' ? 'Continue to Brief →' : 'Continue →'}
             </button>
@@ -241,16 +325,19 @@ function NewProjectContent() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (step === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%',
-            border: '3px solid var(--bg4)', borderTopColor: 'var(--red)',
-            animation: 'spin 1s linear infinite', margin: '0 auto 24px',
-          }} />
-          <p style={{ color: 'var(--text-2)', fontSize: 16 }}>{loadingMsg}</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+        <Header />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 80px)' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: '50%',
+              border: '3px solid var(--bg4)', borderTopColor: 'var(--gold)',
+              animation: 'spin 1s linear infinite', margin: '0 auto 24px',
+            }} />
+            <p style={{ color: 'var(--text-2)', fontSize: 16 }}>{loadingMsg}</p>
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
@@ -260,21 +347,32 @@ function NewProjectContent() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
         <Header />
+        <StepIndicator current="intake" mode={mode} />
         <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px)' }}>
+          <button
+            onClick={() => setStep('typeselect')}
+            aria-label="Back to project type"
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-3)',
+              cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 18,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            ← Back to project type
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <button onClick={() => setStep('typeselect')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: 0 }}>← Back</button>
-            <span style={{ color: 'var(--border)', fontSize: 12 }}>|</span>
-            <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: `${typeConfig.color}18`, color: typeConfig.color, fontWeight: 600 }}>
+            <span style={{ fontSize: 12, padding: '3px 10px', background: `${typeConfig.color}18`, color: typeConfig.color, fontWeight: 600 }}>
               {typeConfig.label}
             </span>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 'clamp(24px, 5vw, 32px)', marginBottom: 8 }}>Generate from brief</h1>
-          <p style={{ color: 'var(--text-2)', marginBottom: 32, fontSize: 14 }}>
+          <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 'clamp(24px, 5vw, 32px)', marginBottom: 8 }}>Generate from brief</h1>
+          <p style={{ color: 'var(--text-2)', marginBottom: 28, fontSize: 14 }}>
             Paste a brief, drop in attachments, or both. PDFs, images, and text files all work.
           </p>
 
           {error && (
-            <div style={{ background: 'var(--danger-light)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: 8, padding: '12px 16px', color: 'var(--danger)', fontSize: 13, marginBottom: 20 }}>
+            <div style={{ background: 'var(--danger-light)', border: '1px solid rgba(192,57,43,0.3)', padding: '12px 16px', color: 'var(--danger)', fontSize: 13, marginBottom: 20 }}>
               {error}
             </div>
           )}
@@ -284,12 +382,14 @@ function NewProjectContent() {
               value={brief}
               onChange={e => setBrief(e.target.value)}
               placeholder="Paste your creative brief, AV script, pitch deck text, project overview, or any combination. The more context, the better."
+              aria-label="Brief text"
               style={{
                 width: '100%', minHeight: 200,
-                background: 'var(--bg2)', border: '1px solid var(--border-med)',
-                borderRadius: 8, color: 'var(--text)', fontSize: 14,
-                padding: '16px', resize: 'vertical', outline: 'none', lineHeight: 1.6,
+                background: 'var(--surface)', border: '1px solid var(--border-med)',
+                color: 'var(--text)', fontSize: 14,
+                padding: '16px', resize: 'vertical', lineHeight: 1.6,
                 boxSizing: 'border-box',
+                fontFamily: 'inherit',
               }}
             />
           </div>
@@ -299,62 +399,98 @@ function NewProjectContent() {
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            aria-label="Attach files: drop here or click to browse"
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
             style={{
-              border: `1px dashed ${dragging ? 'var(--red)' : 'var(--border-med)'}`,
-              borderRadius: 8, padding: '20px 24px', marginBottom: 16,
-              background: dragging ? 'var(--red-light)' : 'var(--bg2)',
+              border: `1px dashed ${dragging ? 'var(--gold)' : 'var(--border-med)'}`,
+              padding: '22px 24px', marginBottom: 16,
+              background: dragging ? 'var(--accent-light)' : 'var(--surface)',
               cursor: 'pointer', transition: 'background .15s, border-color .15s',
               textAlign: 'center',
             }}
           >
-            <input ref={fileInputRef} type="file" accept={ACCEPTED_TYPES} multiple style={{ display: 'none' }}
-              onChange={e => e.target.files && addFiles(e.target.files)} />
-            <div style={{ fontSize: 22, marginBottom: 6 }}>📎</div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              multiple
+              style={{ display: 'none' }}
+              onChange={e => e.target.files && addFiles(e.target.files)}
+            />
+            <div style={{ fontSize: 12, color: 'var(--text-3)', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>＋ Attach</div>
             <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 2 }}>Drop files here or click to browse</div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>PDF, TXT, MD, JPG, PNG, WEBP</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>PDF, TXT, MD, JPG, JPEG, PNG, GIF, WEBP</div>
           </div>
 
           {attachments.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
               {attachments.map((att, i) => (
-                <AttachmentChip key={i} att={att} onRemove={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))} />
+                <AttachmentChip
+                  key={i}
+                  att={att}
+                  onRemove={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                />
               ))}
             </div>
           )}
 
           {parseError && <div style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 12 }}>{parseError}</div>}
 
-          <button onClick={() => setShowContext(v => !v)}
-            style={{ fontSize: 12, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 12, padding: 0 }}>
+          <button
+            onClick={() => setShowContext(v => !v)}
+            aria-expanded={showContext}
+            aria-label="Toggle additional context field"
+            style={{
+              fontSize: 12, color: 'var(--text-3)', background: 'none', border: 'none',
+              cursor: 'pointer', marginBottom: 14, padding: 0,
+            }}
+          >
             {showContext ? '▾' : '▸'} Additional context (optional)
           </button>
 
           {showContext && (
-            <div style={{ marginBottom: 16 }}>
-              <textarea value={additionalContext} onChange={e => setAdditionalContext(e.target.value)}
+            <div style={{ marginBottom: 18 }}>
+              <textarea
+                value={additionalContext}
+                onChange={e => setAdditionalContext(e.target.value)}
+                aria-label="Additional context"
                 placeholder="Anything not in the brief — shoot date, your role, deliverable count, location candidates, rental budget."
                 style={{
                   width: '100%', minHeight: 100,
-                  background: 'var(--bg2)', border: '1px solid var(--border)',
-                  borderRadius: 8, color: 'var(--text)', fontSize: 14,
-                  padding: '14px 16px', resize: 'vertical', outline: 'none', lineHeight: 1.6,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  color: 'var(--text)', fontSize: 14,
+                  padding: '14px 16px', resize: 'vertical', lineHeight: 1.6,
                   boxSizing: 'border-box',
+                  fontFamily: 'inherit',
                 }}
               />
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={handleGenerate} disabled={!canGenerate}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
               style={{
-                padding: '12px 28px', background: canGenerate ? 'var(--red)' : 'var(--bg4)',
-                border: 'none', borderRadius: 8, color: canGenerate ? '#fff' : 'var(--text-3)',
-                fontSize: 14, fontWeight: 600, cursor: canGenerate ? 'pointer' : 'not-allowed',
-              }}>
+                padding: '13px 30px',
+                background: canGenerate ? 'var(--gold)' : 'var(--bg4)',
+                border: 'none',
+                color: canGenerate ? 'var(--gold-on)' : 'var(--text-3)',
+                fontSize: 14, fontWeight: 700, cursor: canGenerate ? 'pointer' : 'not-allowed',
+              }}
+            >
               Generate
             </button>
-            <button onClick={() => { setProject(emptyProject(projectType)); setStep('review') }}
-              style={{ padding: '12px 20px', background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 14, cursor: 'pointer' }}>
+            <button
+              onClick={() => { setProject(emptyProject(projectType)); setStep('review') }}
+              style={{
+                padding: '13px 20px', background: 'none',
+                border: '1px solid var(--border-med)',
+                color: 'var(--text-2)', fontSize: 14, cursor: 'pointer',
+              }}
+            >
               Skip — blank project
             </button>
           </div>
@@ -364,96 +500,97 @@ function NewProjectContent() {
   }
 
   // ── Review ─────────────────────────────────────────────────────────────────
-  const sectionToggle = (id: string) => setExpandedSection(s => s === id ? null : id)
   const missions: Mission[] = project.missions ?? []
 
+  const renderAccordion = (id: string, title: string, body: React.ReactNode) => {
+    const open = expandedSections.has(id)
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid rgba(74,66,60,0.6)', marginBottom: 10, overflow: 'hidden' }}>
+        <button
+          onClick={() => toggleSection(id)}
+          aria-expanded={open}
+          aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)',
+            fontFamily: 'inherit',
+          }}
+        >
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{title}</span>
+          <span aria-hidden style={{ color: 'var(--text-3)', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+        </button>
+        {open && <div style={{ padding: '0 20px 20px' }}>{body}</div>}
+      </div>
+    )
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <Header />
-      <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
-                {mode === 'brief' ? 'Review Generated Project' : 'New Project'}
-              </span>
-              <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 20, background: `${typeConfig.color}18`, color: typeConfig.color, fontWeight: 600 }}>
-                {typeConfig.label}
-              </span>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 'clamp(22px, 5vw, 28px)' }}>
-              {mode === 'brief' ? 'Confirm details' : 'Start from scratch'}
-            </h1>
+      <StepIndicator current="review" mode={mode} />
+      <main style={{ maxWidth: 720, width: '100%', margin: '0 auto', padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px) 120px', flex: 1 }}>
+        <button
+          onClick={() => setStep(mode === 'brief' ? 'intake' : 'typeselect')}
+          aria-label={mode === 'brief' ? 'Back to brief' : 'Back to project type'}
+          style={{
+            background: 'none', border: 'none', color: 'var(--text-3)',
+            cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 18,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          ← {mode === 'brief' ? 'Back to brief' : 'Back to project type'}
+        </button>
+
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+              {mode === 'brief' ? 'Review Generated Project' : 'New Project'}
+            </span>
+            <span style={{ fontSize: 12, padding: '2px 10px', background: `${typeConfig.color}18`, color: typeConfig.color, fontWeight: 600 }}>
+              {typeConfig.label}
+            </span>
           </div>
-          <button onClick={handleCreate}
-            style={{ padding: '10px 24px', background: 'var(--red)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-            Create Project →
-          </button>
+          <h1 style={{ fontFamily: 'var(--font-serif, serif)', fontWeight: 500, fontSize: 'clamp(22px, 5vw, 28px)' }}>
+            {mode === 'brief' ? 'Confirm details' : 'Start from scratch'}
+          </h1>
         </div>
 
-        {/* Campaign Details */}
-        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
-          <button onClick={() => sectionToggle('details')}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Campaign Details</span>
-            <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedSection === 'details' ? '▲' : '▼'}</span>
-          </button>
-          {expandedSection === 'details' && (
-            <div style={{ padding: '0 20px 20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 0 }}>
-                <EditField label="Client Name" value={project.clientName} onChange={v => update({ clientName: v })} />
-                <EditField label="Campaign Name" value={project.campaignName} onChange={v => update({ campaignName: v })} />
-                <EditField label="Shoot Date" value={project.shootDate} onChange={v => update({ shootDate: v })} />
-                <EditField label="Shoot Location" value={project.shootLocation} onChange={v => update({ shootLocation: v })} />
-                <EditField label="My Role" value={project.myRole} onChange={v => update({ myRole: v })} />
-                <EditField label="Deliverable" value={project.deliverable} onChange={v => update({ deliverable: v })} />
-                <EditField label="Director" value={project.director} onChange={v => update({ director: v })} />
-                <EditField label="Producer" value={project.producer} onChange={v => update({ producer: v })} />
-              </div>
+        {renderAccordion('details', 'Campaign Details', (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 0 }}>
+            <EditField label="Client Name" value={project.clientName} onChange={v => update({ clientName: v })} />
+            <EditField label="Campaign Name" value={project.campaignName} onChange={v => update({ campaignName: v })} />
+            <EditField label="Shoot Date" value={project.shootDate} onChange={v => update({ shootDate: v })} />
+            <EditField label="Shoot Location" value={project.shootLocation} onChange={v => update({ shootLocation: v })} />
+            <EditField label="My Role" value={project.myRole} onChange={v => update({ myRole: v })} />
+            <EditField label="Deliverable" value={project.deliverable} onChange={v => update({ deliverable: v })} />
+            <EditField label="Director" value={project.director} onChange={v => update({ director: v })} />
+            <EditField label="Producer" value={project.producer} onChange={v => update({ producer: v })} />
+          </div>
+        ))}
+
+        {renderAccordion('creative', 'Creative Approach', (
+          <>
+            <EditField label="Mood" value={project.mood ?? ''} onChange={v => update({ mood: v })} />
+            <EditField label="Tone" value={project.tone ?? ''} onChange={v => update({ tone: v })} />
+            <EditField label="Style References" value={project.styleReferences ?? ''} onChange={v => update({ styleReferences: v })} multiline />
+          </>
+        ))}
+
+        {renderAccordion('story', 'Story Foundation', (
+          <>
+            <EditField label="Campaign Sentence" value={project.campaignSentence} onChange={v => update({ campaignSentence: v })} multiline />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 0 }}>
+              <EditField label="Character" value={project.character} onChange={v => update({ character: v })} multiline />
+              <EditField label="Location" value={project.location} onChange={v => update({ location: v })} multiline />
+              <EditField label="Event" value={project.event} onChange={v => update({ event: v })} multiline />
+              <EditField label="Reveal Image" value={project.revealImage} onChange={v => update({ revealImage: v })} multiline />
             </div>
-          )}
-        </div>
+            <EditField label="Theme Word" value={project.themeWord} onChange={v => update({ themeWord: v })} />
+          </>
+        ))}
 
-        {/* Creative Approach */}
-        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
-          <button onClick={() => sectionToggle('creative')}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Creative Approach</span>
-            <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedSection === 'creative' ? '▲' : '▼'}</span>
-          </button>
-          {expandedSection === 'creative' && (
-            <div style={{ padding: '0 20px 20px' }}>
-              <EditField label="Mood" value={project.mood ?? ''} onChange={v => update({ mood: v })} />
-              <EditField label="Tone" value={project.tone ?? ''} onChange={v => update({ tone: v })} />
-              <EditField label="Style References" value={project.styleReferences ?? ''} onChange={v => update({ styleReferences: v })} multiline />
-            </div>
-          )}
-        </div>
-
-        {/* Story Foundation */}
-        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
-          <button onClick={() => sectionToggle('story')}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Story Foundation</span>
-            <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{expandedSection === 'story' ? '▲' : '▼'}</span>
-          </button>
-          {expandedSection === 'story' && (
-            <div style={{ padding: '0 20px 20px' }}>
-              <EditField label="Campaign Sentence" value={project.campaignSentence} onChange={v => update({ campaignSentence: v })} multiline />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 0 }}>
-                <EditField label="Character" value={project.character} onChange={v => update({ character: v })} multiline />
-                <EditField label="Location" value={project.location} onChange={v => update({ location: v })} multiline />
-                <EditField label="Event" value={project.event} onChange={v => update({ event: v })} multiline />
-                <EditField label="Reveal Image" value={project.revealImage} onChange={v => update({ revealImage: v })} multiline />
-              </div>
-              <EditField label="Theme Word" value={project.themeWord} onChange={v => update({ themeWord: v })} />
-            </div>
-          )}
-        </div>
-
-        {/* Generated Content Summary */}
         {mode === 'brief' && (missions.length > 0 || project.shots.length > 0 || project.checklistGroups.length > 0) && (
-          <div style={{ padding: '16px 20px', background: 'var(--bg3)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 10 }}>
+          <div style={{ padding: '16px 20px', background: 'var(--bg3)', border: '1px solid var(--border)', marginBottom: 10, marginTop: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>Generated content</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', fontSize: 13 }}>
               {missions.length > 0 && (
@@ -478,14 +615,27 @@ function NewProjectContent() {
             </div>
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-          <button onClick={handleCreate}
-            style={{ padding: '12px 32px', background: 'var(--red)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            Create Project →
-          </button>
-        </div>
       </main>
+
+      {/* Sticky Create bar */}
+      <div style={{
+        position: 'sticky', bottom: 0, left: 0, right: 0,
+        padding: '16px 24px',
+        background: 'linear-gradient(to top, var(--bg) 65%, rgba(14,14,13,0))',
+        display: 'flex', justifyContent: 'flex-end',
+        zIndex: 10,
+      }}>
+        <button
+          onClick={handleCreate}
+          style={{
+            padding: '13px 32px',
+            background: 'var(--gold)', border: 'none',
+            color: 'var(--gold-on)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          Create Project →
+        </button>
+      </div>
     </div>
   )
 }

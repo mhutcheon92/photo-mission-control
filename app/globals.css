@@ -5,13 +5,31 @@
   --bg2: #1a1917;
   --bg3: #222019;
   --bg4: #2d2b27;
+
+  --surface: #1a1917;
+  --surface-alt: #191614;
+  --input-bg: #241f1c;
+
   --accent: #c8a96e;
   --accent-light: rgba(200, 169, 110, 0.12);
+  --gold: #c8a96e;
+  --gold-hover: #d9be94;
+  --gold-on: #241f1a;
+
+  --rust: #C2694A;
+  --rust-tint: rgba(194, 105, 74, 0.20);
+
+  --urgent-bg: rgba(138, 46, 34, 0.20);
+  --urgent-fg: #E08A78;
+  --flag-bg: rgba(138, 90, 48, 0.20);
+  --flag-fg: #D9A472;
+
   --danger: #C0392B;
   --danger-light: rgba(192, 57, 43, 0.12);
   /* Legacy alias — kept so existing var(--red) and var(--red-light) refs resolve to accent */
   --red: #c8a96e;
   --red-light: rgba(200, 169, 110, 0.12);
+
   --text: #f0ece4;
   --text-2: #9a9589;
   --text-3: #5a5650;
@@ -20,6 +38,9 @@
   --amber: #D4821A;
   --green: #4A7C3F;
   --blue: #87AECC;
+
+  --focus-ring: 0 0 0 3px rgba(200, 169, 110, 0.35);
+  --font-mono: var(--font-mono-google, 'JetBrains Mono'), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * {
@@ -41,6 +62,21 @@ textarea {
   field-sizing: content;
 }
 
+.inline-field-display:hover {
+  border-bottom-color: var(--text-3) !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 4px;
+}
+
 ::selection {
   background: rgba(200, 169, 110, 0.25);
 }
@@ -56,4 +92,3 @@ textarea {
   background: var(--bg4);
   border-radius: 3px;
 }
-

@@ -1,22 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { Project, PaletteColour, Alert } from '@/lib/types'
-import { SectionHeader, Card, AlertBanner, PaletteSwatch, EditField, AddButton } from '@/components/ui'
+import { Project, PaletteColour } from '@/lib/types'
+import { Eyebrow, InlineField, InlineTextarea, PaletteSwatch, AddButton } from '@/components/ui'
+import AlertStrip from './AlertStrip'
 
 interface Props {
   project: Project
   onChange: (updates: Partial<Project>) => void
 }
 
+const STORY_FIELDS: Array<{ key: 'character' | 'location' | 'event' | 'revealImage'; label: string; ariaLabel: string }> = [
+  { key: 'character', label: 'Character', ariaLabel: 'Character' },
+  { key: 'location', label: 'Location', ariaLabel: 'Location' },
+  { key: 'event', label: 'Event', ariaLabel: 'Event' },
+  { key: 'revealImage', label: 'Reveal Image', ariaLabel: 'Reveal image' },
+]
+
 export default function Brief({ project, onChange }: Props) {
-  const [editing, setEditing] = useState(false)
-
-  const addAlert = () => {
-    const newAlert: Alert = { type: 'blue', text: '' }
-    onChange({ alerts: [...(project.alerts ?? []), newAlert] })
-  }
-
   const addPalette = () => {
     const newSwatch: PaletteColour = { hex: '#888888', label: '', meaning: '' }
     onChange({ colourPalette: [...(project.colourPalette ?? []), newSwatch] })
@@ -24,158 +24,169 @@ export default function Brief({ project, onChange }: Props) {
 
   return (
     <section>
-      <style>{`
-        .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .brief-grid-mb { margin-bottom: 24px; }
-        @media (max-width: 767px) {
-          .brief-grid { grid-template-columns: 1fr; }
-        }
-      `}</style>
-      <SectionHeader eyebrow="Story Foundation" title="Brief" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
+      <AlertStrip project={project} onChange={onChange} />
 
-      {editing ? (
-        <div>
-          <div className="brief-grid brief-grid-mb">
-            <EditField label="Client Name" value={project.clientName} onChange={v => onChange({ clientName: v })} />
-            <EditField label="Campaign Name" value={project.campaignName} onChange={v => onChange({ campaignName: v })} />
-            <EditField label="Shoot Date" value={project.shootDate} onChange={v => onChange({ shootDate: v })} />
-            <EditField label="Shoot Location" value={project.shootLocation} onChange={v => onChange({ shootLocation: v })} />
-            <EditField label="My Role" value={project.myRole} onChange={v => onChange({ myRole: v })} />
-            <EditField label="Deliverable" value={project.deliverable} onChange={v => onChange({ deliverable: v })} />
-            <EditField label="Director" value={project.director} onChange={v => onChange({ director: v })} />
-            <EditField label="Producer" value={project.producer} onChange={v => onChange({ producer: v })} />
-          </div>
-          <EditField label="Capture Setup" value={project.captureSetup} onChange={v => onChange({ captureSetup: v })} />
-          <EditField label="Campaign Sentence" value={project.campaignSentence} onChange={v => onChange({ campaignSentence: v })} multiline />
-          <div className="brief-grid">
-            <EditField label="Character" value={project.character} onChange={v => onChange({ character: v })} multiline />
-            <EditField label="Location" value={project.location} onChange={v => onChange({ location: v })} multiline />
-            <EditField label="Event" value={project.event} onChange={v => onChange({ event: v })} multiline />
-            <EditField label="Reveal Image" value={project.revealImage} onChange={v => onChange({ revealImage: v })} multiline />
-          </div>
-          <EditField label="Theme Word" value={project.themeWord} onChange={v => onChange({ themeWord: v })} />
-
-          <div style={{ margin: '8px 0 20px', padding: '16px 20px', background: 'var(--bg3)', borderRadius: 8, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 16 }}>Creative Approach</div>
-            <EditField label="Mood" value={project.mood ?? ''} onChange={v => onChange({ mood: v })} />
-            <EditField label="Tone" value={project.tone ?? ''} onChange={v => onChange({ tone: v })} />
-            <EditField label="Style References" value={project.styleReferences ?? ''} onChange={v => onChange({ styleReferences: v })} multiline />
-          </div>
-
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Colour Palette</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 8 }}>
-              {(project.colourPalette ?? []).map((swatch, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
-                  <input type="color" value={swatch.hex} onChange={e => {
-                    const p = [...(project.colourPalette ?? [])]
-                    p[i] = { ...p[i], hex: e.target.value }
-                    onChange({ colourPalette: p })
-                  }} style={{ width: 48, height: 48, borderRadius: 6, border: 'none', cursor: 'pointer', padding: 2, background: 'transparent' }} />
-                  <input value={swatch.label} placeholder="Label" onChange={e => {
-                    const p = [...(project.colourPalette ?? [])]
-                    p[i] = { ...p[i], label: e.target.value }
-                    onChange({ colourPalette: p })
-                  }} style={{ width: 80, fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', padding: '3px 6px' }} />
-                  <input value={swatch.meaning} placeholder="Meaning" onChange={e => {
-                    const p = [...(project.colourPalette ?? [])]
-                    p[i] = { ...p[i], meaning: e.target.value }
-                    onChange({ colourPalette: p })
-                  }} style={{ width: 80, fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', padding: '3px 6px' }} />
-                  <button onClick={() => {
-                    const p = (project.colourPalette ?? []).filter((_, idx) => idx !== i)
-                    onChange({ colourPalette: p })
-                  }} style={{ position: 'absolute', top: -8, right: -8, width: 18, height: 18, borderRadius: '50%', background: 'var(--red)', border: 'none', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-                </div>
-              ))}
-            </div>
-            <AddButton onClick={addPalette} label="Add Colour" />
-          </div>
-
-          <div>
-            <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Alerts</div>
-            {(project.alerts ?? []).map((alert, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-                <select value={alert.type} onChange={e => {
-                  const a = [...(project.alerts ?? [])]
-                  a[i] = { ...a[i], type: e.target.value as Alert['type'] }
-                  onChange({ alerts: a })
-                }} style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '8px 10px', fontSize: 13 }}>
-                  <option value="red">Red</option>
-                  <option value="amber">Amber</option>
-                  <option value="blue">Blue</option>
-                  <option value="green">Green</option>
-                </select>
-                <input value={alert.text} onChange={e => {
-                  const a = [...(project.alerts ?? [])]
-                  a[i] = { ...a[i], text: e.target.value }
-                  onChange({ alerts: a })
-                }} style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '8px 12px', fontSize: 14 }} />
-                <button onClick={() => onChange({ alerts: (project.alerts ?? []).filter((_, idx) => idx !== i) })} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: '6px' }}>×</button>
+      {/* Story Foundation */}
+      <div style={{ marginBottom: 40 }}>
+        <Eyebrow>Story Foundation</Eyebrow>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {STORY_FIELDS.map(f => (
+            <div
+              key={f.key}
+              style={{
+                padding: '18px 0 20px',
+                borderBottom: '1px solid rgba(74,66,60,0.6)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--gold)',
+                  marginBottom: 8,
+                  textTransform: 'uppercase',
+                  letterSpacing: '.16em',
+                  fontWeight: 500,
+                }}
+              >
+                {f.label}
               </div>
-            ))}
-            <AddButton onClick={addAlert} label="Add Alert" />
+              <InlineTextarea
+                fieldKey={`story.${f.key}`}
+                value={project[f.key] ?? ''}
+                onChange={v => onChange({ [f.key]: v } as Partial<Project>)}
+                placeholder="—"
+                ariaLabel={f.ariaLabel}
+                textStyle={{ fontSize: 15, lineHeight: 1.65, color: 'var(--text)' }}
+              />
+            </div>
+          ))}
+          <div style={{ padding: '18px 0 20px' }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--gold)',
+                marginBottom: 8,
+                textTransform: 'uppercase',
+                letterSpacing: '.16em',
+                fontWeight: 500,
+              }}
+            >
+              Theme
+            </div>
+            <InlineField
+              fieldKey="story.themeWord"
+              value={project.themeWord ?? ''}
+              onChange={v => onChange({ themeWord: v })}
+              placeholder="—"
+              ariaLabel="Theme word"
+              textStyle={{
+                fontFamily: 'var(--font-serif, serif)',
+                fontStyle: 'italic',
+                fontSize: 24,
+                color: 'var(--text)',
+              }}
+              inputStyle={{
+                fontFamily: 'var(--font-serif, serif)',
+                fontStyle: 'italic',
+                fontSize: 20,
+              }}
+            />
           </div>
         </div>
-      ) : (
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-            {[
-              { label: 'Character', value: project.character },
-              { label: 'Location', value: project.location },
-              { label: 'Event', value: project.event },
-              { label: 'Reveal Image', value: project.revealImage },
-            ].map(item => (
-              <Card key={item.label}>
-                <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 6 }}>{item.label}</div>
-                <p style={{ fontSize: 14, color: 'var(--text-2)' }}>{item.value || '—'}</p>
-              </Card>
+      </div>
+
+      {/* Campaign sentence */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+          Campaign Sentence
+        </div>
+        <InlineTextarea
+          fieldKey="brief.campaignSentence"
+          value={project.campaignSentence ?? ''}
+          onChange={v => onChange({ campaignSentence: v })}
+          placeholder="This campaign needs to make [audience] feel [emotion] so that they [action]."
+          ariaLabel="Campaign sentence"
+          textStyle={{
+            fontFamily: 'var(--font-serif, serif)',
+            fontSize: 18,
+            lineHeight: 1.5,
+            color: 'var(--text)',
+          }}
+        />
+      </div>
+
+      {/* Creative Approach */}
+      {(project.mood || project.tone || project.styleReferences) !== undefined && (
+        <div style={{ marginBottom: 32 }}>
+          <Eyebrow>Creative Approach</Eyebrow>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.08em' }}>Mood</div>
+              <InlineField fieldKey="brief.mood" value={project.mood ?? ''} onChange={v => onChange({ mood: v })} placeholder="—" ariaLabel="Mood" />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.08em' }}>Tone</div>
+              <InlineField fieldKey="brief.tone" value={project.tone ?? ''} onChange={v => onChange({ tone: v })} placeholder="—" ariaLabel="Tone" />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.08em' }}>Style References</div>
+              <InlineTextarea fieldKey="brief.styleReferences" value={project.styleReferences ?? ''} onChange={v => onChange({ styleReferences: v })} placeholder="—" ariaLabel="Style references" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Colour Palette */}
+      {(project.colourPalette ?? []).length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <Eyebrow>Colour Palette</Eyebrow>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+            {project.colourPalette.map((s, i) => <PaletteSwatch key={i} {...s} />)}
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <AddButton onClick={addPalette} label="Add Colour" />
+          </div>
+        </div>
+      )}
+
+      {/* Constraints & Alerts — its own labeled section */}
+      {(project.alerts ?? []).length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Eyebrow style={{ marginBottom: 0 }}>Constraints &amp; Alerts</Eyebrow>
+            <span style={{ fontSize: 10, padding: '1px 8px', background: 'rgba(138,74,58,0.2)', color: 'var(--rust)', fontWeight: 600 }}>
+              {project.alerts.length} {project.alerts.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {project.alerts.map((a, i) => (
+              <div
+                key={a.id ?? i}
+                style={{
+                  padding: '16px 18px',
+                  background: 'var(--surface)',
+                  border: '1px solid rgba(74,66,60,0.6)',
+                  borderLeft: '2px solid var(--rust)',
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--rust)', marginBottom: 6 }}>
+                  {a.severity ?? (a.type === 'red' ? 'urgent' : 'flag')}
+                </div>
+                <InlineTextarea
+                  fieldKey={`alert.${a.id ?? i}.text`}
+                  value={a.text}
+                  onChange={v => {
+                    const arr = [...(project.alerts ?? [])]
+                    arr[i] = { ...arr[i], text: v }
+                    onChange({ alerts: arr })
+                  }}
+                  placeholder="Constraint or alert text…"
+                  ariaLabel="Alert text"
+                  textStyle={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--text-2)' }}
+                />
+              </div>
             ))}
           </div>
-
-          {project.themeWord && (
-            <div style={{ marginBottom: 20 }}>
-              <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginRight: 8 }}>Theme</span>
-              <span style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 22 }}>{project.themeWord}</span>
-            </div>
-          )}
-
-          {(project.mood || project.tone || project.styleReferences) && (
-            <div style={{ marginBottom: 20, padding: '14px 16px', background: 'var(--bg3)', borderRadius: 8, border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>Creative Approach</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {project.mood && (
-                  <div style={{ fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>Mood</span>
-                    <span style={{ color: 'var(--text-2)' }}>{project.mood}</span>
-                  </div>
-                )}
-                {project.tone && (
-                  <div style={{ fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>Tone</span>
-                    <span style={{ color: 'var(--text-2)' }}>{project.tone}</span>
-                  </div>
-                )}
-                {project.styleReferences && (
-                  <div style={{ fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-3)', marginRight: 8 }}>References</span>
-                    <span style={{ color: 'var(--text-2)' }}>{project.styleReferences}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {(project.colourPalette ?? []).length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 12 }}>Colour Palette</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-                {project.colourPalette.map((s, i) => <PaletteSwatch key={i} {...s} />)}
-              </div>
-            </div>
-          )}
-
-          {(project.alerts ?? []).map((alert, i) => <AlertBanner key={i} {...alert} />)}
         </div>
       )}
     </section>

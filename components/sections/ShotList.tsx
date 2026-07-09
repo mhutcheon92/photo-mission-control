@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import { Project, Shot, Mission } from '@/lib/types'
-import { SectionHeader, ShotRow, MissionBar, Badge, AddButton, MISSION_PALETTE } from '@/components/ui'
+import {
+  Eyebrow, ShotRow, MissionBar, AddButton,
+  SHOT_CODE_LABELS, stripMissionPrefix,
+} from '@/components/ui'
 
 interface Props {
   project: Project
@@ -28,8 +31,9 @@ function newShot(missionId: string, missionIndex: number, shots: Shot[]): Shot {
 }
 
 const inputStyle = {
-  background: 'var(--bg3)', border: '1px solid var(--border)',
-  borderRadius: 6, color: 'var(--text)', padding: '6px 10px', fontSize: 13, width: '100%',
+  background: 'var(--input-bg)', border: '1px solid var(--border-med)',
+  color: 'var(--text)', padding: '6px 10px', fontSize: 13, width: '100%',
+  fontFamily: 'inherit',
 }
 
 function ShotEditor({
@@ -41,7 +45,7 @@ function ShotEditor({
   onDelete: () => void
 }) {
   return (
-    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border-med)', borderRadius: 8, padding: 16, marginBottom: 10 }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid rgba(74,66,60,0.6)', padding: 16, marginBottom: 10 }}>
       <div className="shot-ed-row1">
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Name</label>
@@ -49,14 +53,14 @@ function ShotEditor({
         </div>
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Code</label>
-          <input value={shot.code} onChange={e => onChange({ ...shot, code: e.target.value })} style={inputStyle} />
+          <input value={shot.code} onChange={e => onChange({ ...shot, code: e.target.value })} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }} />
         </div>
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Type</label>
           <select value={shot.type} onChange={e => onChange({ ...shot, type: e.target.value as Shot['type'] })} style={inputStyle}>
+            <option value="C">C — Cutaway</option>
             <option value="E">E — Establishing</option>
             <option value="T">T — Transition</option>
-            <option value="C">C — Cutaway</option>
             <option value="R">R — Reveal</option>
           </select>
         </div>
@@ -72,15 +76,15 @@ function ShotEditor({
       <div className="shot-ed-row2">
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Lens</label>
-          <input value={shot.lens} onChange={e => onChange({ ...shot, lens: e.target.value })} style={inputStyle} />
+          <input value={shot.lens} onChange={e => onChange({ ...shot, lens: e.target.value })} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }} />
         </div>
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Settings</label>
-          <input value={shot.settings} onChange={e => onChange({ ...shot, settings: e.target.value })} style={inputStyle} />
+          <input value={shot.settings} onChange={e => onChange({ ...shot, settings: e.target.value })} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }} />
         </div>
         <div>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Script Ref</label>
-          <input value={shot.scriptRef} onChange={e => onChange({ ...shot, scriptRef: e.target.value })} style={inputStyle} />
+          <input value={shot.scriptRef} onChange={e => onChange({ ...shot, scriptRef: e.target.value })} style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }} />
         </div>
       </div>
       {missions.length > 1 && (
@@ -92,20 +96,54 @@ function ShotEditor({
             style={inputStyle}
           >
             {missions.map((m, i) => (
-              <option key={m.id} value={m.id}>Mission {i + 1} — {m.name}</option>
+              <option key={m.id} value={m.id}>Mission {i + 1} — {stripMissionPrefix(m.name)}</option>
             ))}
           </select>
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1, marginRight: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 200, marginRight: 12 }}>
           <label style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Notes</label>
           <input value={shot.notes} onChange={e => onChange({ ...shot, notes: e.target.value })} style={inputStyle} />
         </div>
-        <button onClick={onDelete} style={{ background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: 6, color: 'var(--red)', padding: '6px 12px', fontSize: 12, cursor: 'pointer', marginTop: 20, flexShrink: 0 }}>
+        <button
+          onClick={onDelete}
+          aria-label="Remove shot"
+          style={{
+            background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.3)',
+            color: 'var(--danger)', padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+            marginTop: 20, flexShrink: 0, fontFamily: 'inherit',
+          }}
+        >
           Remove
         </button>
       </div>
+    </div>
+  )
+}
+
+function ShotCodeLegend() {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+      {['C', 'E', 'T', 'R'].map(code => {
+        const info = SHOT_CODE_LABELS[code]
+        return (
+          <div key={code} title={info.title} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'default' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10, fontWeight: 600,
+                width: 18, height: 18,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--input-bg)', color: 'var(--text-2)',
+              }}
+            >
+              {code}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{info.label}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -120,7 +158,6 @@ export default function ShotList({ project, onChange }: Props) {
   const deleteShot = (id: string) =>
     onChange({ shots: shots.filter(s => s.id !== id) })
 
-  // If no missions defined, show a flat list with a generic group
   const missionGroups = missions.length > 0 ? missions : []
   const assignedIds = new Set(missions.map(m => m.id))
   const unassigned = shots.filter(s => !assignedIds.has(s.mission))
@@ -128,14 +165,33 @@ export default function ShotList({ project, onChange }: Props) {
   return (
     <section>
       <style>{`
-        .shot-ed-row1 { display: grid; grid-template-columns: 1fr 1fr 80px 80px; gap: 10px; margin-bottom: 10px; }
+        .shot-ed-row1 { display: grid; grid-template-columns: 1fr 1fr 100px 100px; gap: 10px; margin-bottom: 10px; }
         .shot-ed-row2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         @media (max-width: 767px) {
           .shot-ed-row1 { grid-template-columns: 1fr 1fr; }
           .shot-ed-row2 { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
-      <SectionHeader eyebrow="Shot List" title="Shots" editing={editing} onToggleEdit={() => setEditing(e => !e)} />
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+        <Eyebrow style={{ marginBottom: 0 }}>Shot List</Eyebrow>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <ShotCodeLegend />
+          <button
+            onClick={() => setEditing(e => !e)}
+            aria-label={editing ? 'Finish editing shots' : 'Edit shots'}
+            style={{
+              padding: '6px 12px',
+              background: editing ? 'var(--accent-light)' : 'var(--surface)',
+              border: `1px solid ${editing ? 'var(--gold)' : 'var(--border-med)'}`,
+              color: editing ? 'var(--gold)' : 'var(--text-2)',
+              fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {editing ? 'Done' : 'Edit'}
+          </button>
+        </div>
+      </div>
 
       {editing ? (
         <div>
@@ -143,7 +199,7 @@ export default function ShotList({ project, onChange }: Props) {
             const mShots = shots.filter(s => s.mission === m.id)
             return (
               <div key={m.id} style={{ marginBottom: 24 }}>
-                <MissionBar name={`Mission ${i + 1} — ${m.name}`} index={i} />
+                <MissionBar name={`Mission ${i + 1} — ${stripMissionPrefix(m.name)}`} index={i} />
                 {mShots.map(shot => (
                   <ShotEditor key={shot.id} shot={shot} missions={missions} onChange={updateShot} onDelete={() => deleteShot(shot.id)} />
                 ))}
@@ -186,8 +242,8 @@ export default function ShotList({ project, onChange }: Props) {
             if (!mShots.length) return null
             return (
               <div key={m.id} style={{ marginBottom: 24 }}>
-                <MissionBar name={`Mission ${i + 1} — ${m.name}`} index={i} />
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                <MissionBar name={`Mission ${i + 1} — ${stripMissionPrefix(m.name)}`} index={i} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {mShots.map(shot => <ShotRow key={shot.id} shot={shot} />)}
                 </div>
               </div>
@@ -196,7 +252,7 @@ export default function ShotList({ project, onChange }: Props) {
           {unassigned.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <MissionBar name="Unassigned Shots" index={4} />
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {unassigned.map(shot => <ShotRow key={shot.id} shot={shot} />)}
               </div>
             </div>

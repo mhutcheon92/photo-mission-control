@@ -26,7 +26,7 @@ export default function ProjectHero({ project, onChange }: Props) {
       style={{
         background: 'var(--bg)',
         borderBottom: '1px solid rgba(74,66,60,0.6)',
-        padding: 'clamp(24px, 5vw, 40px) clamp(20px, 6vw, 48px) clamp(12px, 3vw, 20px)',
+        padding: 'clamp(24px, 5vw, 40px) 0 clamp(12px, 3vw, 20px)',
       }}
     >
       <style>{`

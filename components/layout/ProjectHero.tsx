@@ -1,18 +1,18 @@
 'use client'
 
 import { Project } from '@/lib/types'
-import { InlineField, RichTextEditor } from '@/components/ui'
+import { RichTextEditor } from '@/components/ui'
 
 interface Props {
   project: Project
   onChange?: (updates: Partial<Project>) => void
 }
 
-const META_FIELDS: Array<{ label: string; key: keyof Project; ariaLabel: string; multiline?: boolean }> = [
+const META_FIELDS: Array<{ label: string; key: keyof Project; ariaLabel: string }> = [
   { label: 'Shoot Date', key: 'shootDate', ariaLabel: 'Shoot date' },
-  { label: 'Role', key: 'myRole', ariaLabel: 'Your role', multiline: true },
-  { label: 'Deliverable', key: 'deliverable', ariaLabel: 'Deliverable', multiline: true },
-  { label: 'Location', key: 'shootLocation', ariaLabel: 'Shoot location', multiline: true },
+  { label: 'Role', key: 'myRole', ariaLabel: 'Your role' },
+  { label: 'Deliverable', key: 'deliverable', ariaLabel: 'Deliverable' },
+  { label: 'Location', key: 'shootLocation', ariaLabel: 'Shoot location' },
   { label: 'Director', key: 'director', ariaLabel: 'Director' },
   { label: 'Producer', key: 'producer', ariaLabel: 'Producer' },
 ]
@@ -111,25 +111,14 @@ export default function ProjectHero({ project, onChange }: Props) {
                 {f.label}
               </span>
               {editable && onChange ? (
-                f.multiline ? (
-                  <RichTextEditor
-                    fieldKey={`hero.${String(f.key)}`}
-                    value={value}
-                    onChange={v => onChange({ [f.key]: v } as Partial<Project>)}
-                    placeholder="—"
-                    ariaLabel={f.ariaLabel}
-                    textStyle={{ fontSize: 16, lineHeight: 1.55, color: 'var(--text)' }}
-                  />
-                ) : (
-                  <InlineField
-                    fieldKey={`hero.${String(f.key)}`}
-                    value={value}
-                    onChange={v => onChange({ [f.key]: v } as Partial<Project>)}
-                    placeholder="—"
-                    ariaLabel={f.ariaLabel}
-                    textStyle={{ fontSize: 16, lineHeight: 1.5 }}
-                  />
-                )
+                <RichTextEditor
+                  fieldKey={`hero.${String(f.key)}`}
+                  value={value}
+                  onChange={v => onChange({ [f.key]: v } as Partial<Project>)}
+                  placeholder="—"
+                  ariaLabel={f.ariaLabel}
+                  textStyle={{ fontSize: 16, lineHeight: 1.55, color: 'var(--text)' }}
+                />
               ) : (
                 <span style={{ fontSize: 16, lineHeight: 1.5, color: value ? 'var(--text)' : 'var(--text-3)', whiteSpace: 'pre-wrap' }}>
                   {value || '—'}

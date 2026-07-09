@@ -131,20 +131,23 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           onExportMarkdown={handleExportMarkdown}
           onShare={() => setShowShare(true)}
         />
-        <ProjectHero project={project} onChange={handleChange} />
 
-        {!hydrated && (
-          <div style={{ height: 2, background: 'var(--bg3)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', inset: '0', background: 'var(--gold)', animation: 'slide 1.2s ease-in-out infinite' }} />
-            <style>{`@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
+        <div style={{ maxWidth: '75vw', margin: '0 auto' }}>
+          <ProjectHero project={project} onChange={handleChange} />
+
+          {!hydrated && (
+            <div style={{ height: 2, background: 'var(--bg3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: '0', background: 'var(--gold)', animation: 'slide 1.2s ease-in-out infinite' }} />
+              <style>{`@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
+            </div>
+          )}
+
+          <div className="project-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <SideNav active={activeSection} onSelect={setActiveSection} />
+            <main style={{ flex: 1, padding: 'clamp(24px, 4vw, 40px) clamp(16px, 5vw, 48px)', minWidth: 0, maxWidth: '100%' }}>
+              {sections[activeSection]}
+            </main>
           </div>
-        )}
-
-        <div className="project-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <SideNav active={activeSection} onSelect={setActiveSection} />
-          <main style={{ flex: 1, padding: 'clamp(24px, 4vw, 40px) clamp(16px, 5vw, 48px)', minWidth: 0, maxWidth: '100%' }}>
-            {sections[activeSection]}
-          </main>
         </div>
 
         {showShare && (

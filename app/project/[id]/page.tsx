@@ -132,7 +132,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           onShare={() => setShowShare(true)}
         />
 
-        <div style={{ maxWidth: '75vw', margin: '0 auto' }}>
+        <style>{`@media (max-width: 767px) { .content-shell { max-width: 95vw !important; } }`}</style>
+        <div className="content-shell" style={{ maxWidth: '75vw', margin: '0 auto' }}>
           <ProjectHero project={project} onChange={handleChange} />
 
           {!hydrated && (
